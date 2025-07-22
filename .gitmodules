@@ -1,0 +1,3 @@
+[submodule "ragu/triplet/kg_small_models_pipeline"]
+	path = ragu/triplet/kg_small_models_pipeline
+	url = https://github.com/AsphodelRem/kg_small_models_pipeline
