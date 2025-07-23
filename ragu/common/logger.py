@@ -27,7 +27,7 @@ def log_outputs(df: pd.DataFrame, filename: str):
     :param filename: filename for the saved file.
     """
     filepath = os.path.join(run_output_dir, f"{filename}.parquet")
-    df.to_parquet(filepath, index=False)
+#    df.to_parquet(filepath, index=False, engine='pyarrow')
     logging.info(f"Outputs saved in: {filepath}")
 
 def log_metrics(metrics: dict, filename: str):

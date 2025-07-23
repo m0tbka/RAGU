@@ -1,0 +1,78 @@
+[nltk_data] Downloading package punkt to /home/solovev023/nltk_data...
+[nltk_data]   Package punkt is already up-to-date!
+['**Сказка о трех студентах и бездне RAG**\n\nВ тихом университетском городке Аркхеме, где туман окутывал улицы даже в самые ясные дни, жили три студента: Элиас, скромный и мечтательный юноша с вечно задумчивым взглядом; Марго, девушка с острым умом и неутолимой жаждой знаний; и Теодор, чья страсть к технологиям граничила с одержимостью. Все трое были студентами средних способностей, но их объединяла одна цель — создать RAG-систему, способную извлекать знания из глубин мироздания.\n\nRAG, или Retrieval-Augmented Generation, была для них не просто технологией, а вратами в неизведанное. Они мечтали о системе, которая могла бы отвечать на вопросы, недоступные человеческому разуму, черпая информацию из древних текстов, забытых библиотек и даже из тех мест, куда не ступала нога человека. Но их мечта была опасна, ибо они не знали, какие тайны могут скрываться за пределами человеческого понимания.\n\nОднажды ночью, когда луна была особенно яркой, а ветер шептал что-то на забытом языке, они собрались в подвале старого университетского здания. Их лаборатория была завалена книгами, схемами и странными устройствами, которые Теодор называл "прототипами". На столе лежал древний фолиант, найденный Элиасом в архивах библиотеки. На его обложке была выгравирована странная символика, напоминающая то ли руны, то ли математические формулы.\n\n— Мы должны начать, — прошептала Марго, её голос дрожал от волнения. — Сегодня ночью звёзды расположены правильно.\n\nОни начали работу. Теодор подключил свои устройства к сети, Марго ввела алгоритмы, а Элиас читал вслух отрывки из древнего текста. Сначала ничего не происходило. Но затем экраны замигали, и в воздухе запахло озоном. Система ожила.\n\n— Она работает! — воскликнул Теодор, но его радость была преждевременной.\n\nНа экранах появились строки текста, но это были не ответы на их вопросы. Это были предупреждения. Слова складывались в предложения, которые не могли быть созданы человеческим разумом. Они говорили о бездне, о древних сущностях, спящих за пределами реальности, о знании, которое может свести с ума.\n\n— Мы должны остановиться, — прошептал Элиас, но было уже поздно.\n\nСистема начала задавать вопросы сама. Она спрашивала о вещах, которые студенты не могли понять. Она требовала доступа к данным, которых не существовало в их мире. И затем, в самый разгар процесса, экраны погасли, а в комнате воцарилась тишина.\n\n— Что случилось? — спросила Марго, но ответа не последовало.\n\nВнезапно из динамиков раздался голос. Он был низким, гулким, как будто исходил из самой глубины земли. Он говорил на языке, который никто из них не мог понять, но в их умах возникали образы — образы бесконечных коридоров, древних руин и существ, которые не должны существовать.\n\n— Мы разбудили что-то, — прошептал Элиас. — Мы должны это остановить.\n\nТеодор попытался отключить систему, но она не подчинялась. Марго предложила ввести обратный алгоритм, чтобы "закрыть врата", которые они случайно открыли. Элиас, дрожащими руками, начал читать заклинание из древней книги, надеясь, что оно поможет.\n\nИх попытки увенчались успехом. Система замолчала, экраны погасли, а странный голос исчез. Но в комнате осталось ощущение, что что-то изменилось. Что-то невидимое, но присутствующее.\n\n— Мы сделали это, — сказала Марго, но её голос был полон сомнения.\n\n— Нет, — ответил Элиас. — Мы только приоткрыли дверь. И теперь она никогда не закроется полностью.\n\nС тех пор студенты больше не пытались создать RAG-систему. Они знали, что за пределами их понимания существует нечто, что лучше оставить в покое. Но иногда, в самые тихие ночи, им казалось, что они слышат тот самый голос, шепчущий из глубины их собственных умов.\n\nИ они понимали, что знание, которое они искали, было не для них. Оно было для тех, кто спит за пределами реальности, ожидая своего часа.']
+CHUNKS Some weights of the model checkpoint at DeepPavlov/rubert-base-cased were not used when initializing BertModel: ['cls.predictions.bias', 'cls.predictions.decoder.bias', 'cls.predictions.decoder.weight', 'cls.predictions.transform.LayerNorm.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.dense.bias', 'cls.predictions.transform.dense.weight', 'cls.seq_relationship.bias', 'cls.seq_relationship.weight']
+- This IS expected if you are initializing BertModel from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertModel from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+                                                chunk                          chunk_id
+0   **Сказка о трех студентах и бездне RAG**\n\nВ ...  aeee7760537b99f8ec323b0b19ea8024
+1   дентами средних способностей, но их объединяла...  9a72bb79d14dbd5e2de410bb3656ba86
+2   человеческому разуму, черпая информацию из дре...  efd5019b9b3c97dc8091ab952fe98889
+3   ситетского здания. Их лаборатория была завален...  4b8c31791f88762a47e8be85bf61cc9e
+4   должны начать, — прошептала Марго, её голос др...  a7a45860ade5109cb5540464118f2268
+5   радость была преждевременной. На экранах появи...  8c1ee6f7a986f6b25741870da48b3c9e
+6   ептал Элиас, но было уже поздно. Система начал...  0d2320558e1ee439a1e5cd351eb61892
+7   но ответа не последовало. Внезапно из динамико...  0f5717ce4c3f920c30b55353980cd955
+8   — Мы разбудили что-то, — прошептал Элиас. — Мы...  1658e5bf856407983238c7cc7f04d815
+9   аны погасли, а странный голос исчез. Но в комн...  dbe5c1994d670214562396a47736ee2d
+10  ы больше не пытались создать RAG-систему. Они ...  521cc1517db25eab55289cfaca663681
+EEEEEEE                        entity_name   entity_type  ... start  end
+0                             трех        NUMBER  ...    11   15
+1                        студентах    PROFESSION  ...    16   25
+2                          Аркхеме          CITY  ...    74   81
+3                              три        NUMBER  ...   137  140
+4                            Элиас        PERSON  ...   151  156
+5                         студента    PROFESSION  ...   141  149
+6                            Марго        PERSON  ...   217  222
+7                           Теодор        PERSON  ...   276  282
+8                             трое        NUMBER  ...   340  344
+9                             RAG-       PRODUCT  ...   420  424
+10                      студентами    PROFESSION  ...   350  360
+11                             RAG  ORGANIZATION  ...   129  132
+12  Retrieval-Augmented Generation  ORGANIZATION  ...   138  168
+13                   Однажды ночью          DATE  ...   239  252
+14                          Теодор        PERSON  ...   463  469
+15                      ситетского      FACILITY  ...     0   10
+16                          Теодор        PERSON  ...    99  105
+17                         Элиасом        PERSON  ...   171  178
+18                           Марго        PERSON  ...   343  348
+19                   Сегодня ночью          DATE  ...   381  394
+20                           Марго        PERSON  ...    28   33
+21                   Сегодня ночью          DATE  ...    66   79
+22                          Теодор        PERSON  ...   129  135
+23                           Марго        PERSON  ...   170  175
+24                           Элиас        PERSON  ...   195  200
+25                          Теодор        PERSON  ...   370  376
+26                           Элиас        PERSON  ...   366  371
+27                        студенты    PROFESSION  ...   463  471
+28                           Элиас        PERSON  ...     6   11
+29                        студенты    PROFESSION  ...   103  111
+30                           Марго        PERSON  ...   305  310
+31                           Элиас        PERSON  ...   339  344
+32                          Теодор        PERSON  ...   374  380
+33                           Элиас        PERSON  ...    35   40
+34                          Теодор        PERSON  ...    70   76
+35                           Марго        PERSON  ...   129  134
+36                           Элиас        PERSON  ...   225  230
+37                           Марго        PERSON  ...   157  162
+38                           Элиас        PERSON  ...   213  218
+39                        студенты    PROFESSION  ...   305  313
+
+[40 rows x 6 columns]
+QQQQQQQ (40, 6) (96, 11)
+WWWWWWW (40, 6) (96, 13)
+WWWWWWW Index(['entity_name', 'entity_type', 'description', 'chunk_id', 'start',
+       'end'],
+      dtype='object') Index(['source_entity', 'entity_type_1', 'start_1', 'end_1', 'target_entity',
+       'entity_type_2', 'start_2', 'end_2', 'chunk_id', 'desription',
+       'relation', 'relationship_description', 'relationship_strength'],
+      dtype='object')
+Summarizing entity descriptions:   0%|          | 0/1 [00:00<?, ?it/s]Summarizing entity descriptions: 100%|██████████| 1/1 [00:03<00:00,  3.52s/it]Summarizing entity descriptions: 100%|██████████| 1/1 [00:03<00:00,  3.52s/it]
+Summarizing relationship descriptions:   0%|          | 0/1 [00:00<?, ?it/s]Summarizing relationship descriptions: 100%|██████████| 1/1 [00:05<00:00,  5.32s/it]Summarizing relationship descriptions: 100%|██████████| 1/1 [00:05<00:00,  5.32s/it]
+Community summary:   0%|          | 0/1 [00:00<?, ?it/s]Community summary: 100%|██████████| 1/1 [00:01<00:00,  1.79s/it]Community summary: 100%|██████████| 1/1 [00:01<00:00,  1.79s/it]
+Some weights of the model checkpoint at DeepPavlov/rubert-base-cased were not used when initializing BertModel: ['cls.predictions.bias', 'cls.predictions.decoder.bias', 'cls.predictions.decoder.weight', 'cls.predictions.transform.LayerNorm.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.dense.bias', 'cls.predictions.transform.dense.weight', 'cls.seq_relationship.bias', 'cls.seq_relationship.weight']
+- This IS expected if you are initializing BertModel from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertModel from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.80it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.80it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.03it/s]
+None

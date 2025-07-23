@@ -1,39 +1,54 @@
-[tool.poetry]
+[project]
 name = "ragu"
 version = "0.1.0"
 description = ""
-authors = ["AsphodelRem <asphodel.bog.rem@gmail.com>"]
+authors = [{ name = "AsphodelRem", email = "asphodel.bog.rem@gmail.com" }]
+requires-python = ">=3.12,<3.13"
 readme = "README.md"
+dependencies = [
+    "numpy<2.0.0",
+    "pandas>=2.3.0,<3",
+    "nltk>=3.6.4",
+    "torch>=2.7.1,<3",
+    "transformers==4.49",
+    "tqdm>=4.67.1,<5",
+    "networkx~=3.5",
+    "smart-chunker",
+    "sentence-transformers>=4.1.0,<5",
+    "openai>=1.86.0,<2",
+    "pydantic-settings>=2.9.1,<3",
+    "graspologic>=3.4.1,<4",
+    "future>=1.0.0,<2",
+    "pyvis>=0.3.2,<0.4",
+    "nano-vectordb>=0.0.4.3,<0.1",
+    "tiktoken>=0.9.0,<0.10",
+    "fastparquet>=2024.11.0,<2025",
+    "pytest==5.3.2",
+    "scikit-learn>=1.7.1",
+    "scipy>=1.12.0",
+    "spacy>=3.8.7",
+    "rapidfuzz>=3.13.0",
+    "pip>=25.1.1",
+    "langchain-openai>=0.3.28",
+    "pyarrow==16.1.0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.12,<3.13"
-numpy = "<2.0.0"
-pandas = "^2.3.0"
-nltk = "^3.9.1"
-torch = "^2.7.1"
-transformers = "^4.52.4"
-tqdm = "^4.67.1"
-networkx = "^3.5"
-smart-chunker = {git = "https://github.com/AsphodelRem/smart_chunker.git", rev = "main"}
-sentence-transformers = "^4.1.0"
-openai = "^1.86.0"
-pydantic-settings = "^2.9.1"
-graspologic = "^3.4.1"
-future = "^1.0.0"
-pyvis = "^0.3.2"
-nano-vectordb = "^0.0.4.3"
-tiktoken = "^0.9.0"
-fastparquet = "^2024.11.0"
+[project.optional-dependencies]
+vllm = []
 
-[tool.poetry.extras]
-vllm = ["vllm"]
+[dependency-groups]
+dev = [
+    "pre-commit>=3.7.0,<4",
+    "isort",
+    "flake8>=7.0.0,<8",
+    "mypy>=1.10.0,<2",
+]
 
-[tool.poetry.group.dev.dependencies]
-pre-commit = "^3.7.0"
-isort = "*"
-flake8 = "^7.0.0"
-mypy = "^1.10.0"
+[tool.uv]
+
+[tool.uv.sources]
+smart-chunker = { git = "https://github.com/AsphodelRem/smart_chunker.git", rev = "main" }
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
