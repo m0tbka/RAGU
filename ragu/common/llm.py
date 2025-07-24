@@ -3,6 +3,7 @@ import logging
 
 from openai import OpenAI
 from ragu.common.decorator import no_throw
+from langchain_openai import ChatOpenAI
 
 
 class BaseLLM:
@@ -131,6 +132,8 @@ class RemoteLLM(BaseLLM):
                     messages=messages,
                     **kwargs
                 )
+                print("OOOOOOOOOOOOO", response)
+                print("PPPPPPPPPPPPP")
 
                 if not response.choices:
                     continue
@@ -144,9 +147,11 @@ class RemoteLLM(BaseLLM):
                 return response.choices[0].message.content
 
             except Exception as e:
+                print("EEEERRRROOOORRRR: ", e)
                 logging.error(f"Failed to generate response: {e}")
                 return None
 
+        print("FFFFFF Just None")
         return None
 
 

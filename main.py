@@ -33,10 +33,16 @@ chunker = SimpleChunker(
     # entity_list_type=[your entity types],
     # batch_size=16
 #)
-DEEPSEEK_API_KEY = ''
 # Initialize a graph builder pipeline
+
+client = RemoteLLM("gpt://b1go6qinn0muj8gb8k4o/yandexgpt/latest", "https://llm.api.cloud.yandex.net/v1", "AQVN2EAPcvGE4WvehCSb1kl29NUbsnF9rjkv5Vw5")
+#print(client.generate("Привет, Дроид! Мне нужна твоя помощь, чтобы узнать больше о Силе. Как я могу научиться ее использовать?", "Ты ассистент дроид, способный помочь в галактических приключениях."))
+
+#import sys
+#sys.exit(0)
+
 graph_builder = KnowledgeGraphBuilder(
-    RemoteLLM("deepseek/deepseek-chat:free", "https://openrouter.ai/api/v1", DEEPSEEK_API_KEY),
+    client,
     triplet_extractor=TripletSMs(),
     chunker=chunker
 )
@@ -55,7 +61,8 @@ index.make_index(knowledge_graph)
 
 
 # Quering the Graph
-local_search = LocalSearchEngine(RemoteLLM("deepseek/deepseek-chat:free", "https://openrouter.ai/api/v1", DEEPSEEK_API_KEY),
+local_search = LocalSearchEngine(client,
 knowledge_graph, embedder, index)
 
+print("TTTTTTTTTTTTT")
 print(local_search.query("Как звали детей последнего императора Российской Империи?"))

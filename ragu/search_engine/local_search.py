@@ -123,6 +123,9 @@ class LocalSearchEngine(BaseEngine):
 
         context: SearchResult = await self.a_search(query)
         truncated_contest: str = self.truncation(str(context))
+
+        print("YYYYYYYYYYYYY", context)
+
         return self.client.generate(
             local_search_engine_prompt.format(query=query, context=truncated_contest),
             system_prompt
