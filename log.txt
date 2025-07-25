@@ -1,78 +1,1046 @@
-[nltk_data] Downloading package punkt to /home/solovev023/nltk_data...
-[nltk_data]   Package punkt is already up-to-date!
-['**Сказка о трех студентах и бездне RAG**\n\nВ тихом университетском городке Аркхеме, где туман окутывал улицы даже в самые ясные дни, жили три студента: Элиас, скромный и мечтательный юноша с вечно задумчивым взглядом; Марго, девушка с острым умом и неутолимой жаждой знаний; и Теодор, чья страсть к технологиям граничила с одержимостью. Все трое были студентами средних способностей, но их объединяла одна цель — создать RAG-систему, способную извлекать знания из глубин мироздания.\n\nRAG, или Retrieval-Augmented Generation, была для них не просто технологией, а вратами в неизведанное. Они мечтали о системе, которая могла бы отвечать на вопросы, недоступные человеческому разуму, черпая информацию из древних текстов, забытых библиотек и даже из тех мест, куда не ступала нога человека. Но их мечта была опасна, ибо они не знали, какие тайны могут скрываться за пределами человеческого понимания.\n\nОднажды ночью, когда луна была особенно яркой, а ветер шептал что-то на забытом языке, они собрались в подвале старого университетского здания. Их лаборатория была завалена книгами, схемами и странными устройствами, которые Теодор называл "прототипами". На столе лежал древний фолиант, найденный Элиасом в архивах библиотеки. На его обложке была выгравирована странная символика, напоминающая то ли руны, то ли математические формулы.\n\n— Мы должны начать, — прошептала Марго, её голос дрожал от волнения. — Сегодня ночью звёзды расположены правильно.\n\nОни начали работу. Теодор подключил свои устройства к сети, Марго ввела алгоритмы, а Элиас читал вслух отрывки из древнего текста. Сначала ничего не происходило. Но затем экраны замигали, и в воздухе запахло озоном. Система ожила.\n\n— Она работает! — воскликнул Теодор, но его радость была преждевременной.\n\nНа экранах появились строки текста, но это были не ответы на их вопросы. Это были предупреждения. Слова складывались в предложения, которые не могли быть созданы человеческим разумом. Они говорили о бездне, о древних сущностях, спящих за пределами реальности, о знании, которое может свести с ума.\n\n— Мы должны остановиться, — прошептал Элиас, но было уже поздно.\n\nСистема начала задавать вопросы сама. Она спрашивала о вещах, которые студенты не могли понять. Она требовала доступа к данным, которых не существовало в их мире. И затем, в самый разгар процесса, экраны погасли, а в комнате воцарилась тишина.\n\n— Что случилось? — спросила Марго, но ответа не последовало.\n\nВнезапно из динамиков раздался голос. Он был низким, гулким, как будто исходил из самой глубины земли. Он говорил на языке, который никто из них не мог понять, но в их умах возникали образы — образы бесконечных коридоров, древних руин и существ, которые не должны существовать.\n\n— Мы разбудили что-то, — прошептал Элиас. — Мы должны это остановить.\n\nТеодор попытался отключить систему, но она не подчинялась. Марго предложила ввести обратный алгоритм, чтобы "закрыть врата", которые они случайно открыли. Элиас, дрожащими руками, начал читать заклинание из древней книги, надеясь, что оно поможет.\n\nИх попытки увенчались успехом. Система замолчала, экраны погасли, а странный голос исчез. Но в комнате осталось ощущение, что что-то изменилось. Что-то невидимое, но присутствующее.\n\n— Мы сделали это, — сказала Марго, но её голос был полон сомнения.\n\n— Нет, — ответил Элиас. — Мы только приоткрыли дверь. И теперь она никогда не закроется полностью.\n\nС тех пор студенты больше не пытались создать RAG-систему. Они знали, что за пределами их понимания существует нечто, что лучше оставить в покое. Но иногда, в самые тихие ночи, им казалось, что они слышат тот самый голос, шепчущий из глубины их собственных умов.\n\nИ они понимали, что знание, которое они искали, было не для них. Оно было для тех, кто спит за пределами реальности, ожидая своего часа.']
-CHUNKS Some weights of the model checkpoint at DeepPavlov/rubert-base-cased were not used when initializing BertModel: ['cls.predictions.bias', 'cls.predictions.decoder.bias', 'cls.predictions.decoder.weight', 'cls.predictions.transform.LayerNorm.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.dense.bias', 'cls.predictions.transform.dense.weight', 'cls.seq_relationship.bias', 'cls.seq_relationship.weight']
-- This IS expected if you are initializing BertModel from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
-- This IS NOT expected if you are initializing BertModel from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
-                                                chunk                          chunk_id
-0   **Сказка о трех студентах и бездне RAG**\n\nВ ...  aeee7760537b99f8ec323b0b19ea8024
-1   дентами средних способностей, но их объединяла...  9a72bb79d14dbd5e2de410bb3656ba86
-2   человеческому разуму, черпая информацию из дре...  efd5019b9b3c97dc8091ab952fe98889
-3   ситетского здания. Их лаборатория была завален...  4b8c31791f88762a47e8be85bf61cc9e
-4   должны начать, — прошептала Марго, её голос др...  a7a45860ade5109cb5540464118f2268
-5   радость была преждевременной. На экранах появи...  8c1ee6f7a986f6b25741870da48b3c9e
-6   ептал Элиас, но было уже поздно. Система начал...  0d2320558e1ee439a1e5cd351eb61892
-7   но ответа не последовало. Внезапно из динамико...  0f5717ce4c3f920c30b55353980cd955
-8   — Мы разбудили что-то, — прошептал Элиас. — Мы...  1658e5bf856407983238c7cc7f04d815
-9   аны погасли, а странный голос исчез. Но в комн...  dbe5c1994d670214562396a47736ee2d
-10  ы больше не пытались создать RAG-систему. Они ...  521cc1517db25eab55289cfaca663681
-EEEEEEE                        entity_name   entity_type  ... start  end
-0                             трех        NUMBER  ...    11   15
-1                        студентах    PROFESSION  ...    16   25
-2                          Аркхеме          CITY  ...    74   81
-3                              три        NUMBER  ...   137  140
-4                            Элиас        PERSON  ...   151  156
-5                         студента    PROFESSION  ...   141  149
-6                            Марго        PERSON  ...   217  222
-7                           Теодор        PERSON  ...   276  282
-8                             трое        NUMBER  ...   340  344
-9                             RAG-       PRODUCT  ...   420  424
-10                      студентами    PROFESSION  ...   350  360
-11                             RAG  ORGANIZATION  ...   129  132
-12  Retrieval-Augmented Generation  ORGANIZATION  ...   138  168
-13                   Однажды ночью          DATE  ...   239  252
-14                          Теодор        PERSON  ...   463  469
-15                      ситетского      FACILITY  ...     0   10
-16                          Теодор        PERSON  ...    99  105
-17                         Элиасом        PERSON  ...   171  178
-18                           Марго        PERSON  ...   343  348
-19                   Сегодня ночью          DATE  ...   381  394
-20                           Марго        PERSON  ...    28   33
-21                   Сегодня ночью          DATE  ...    66   79
-22                          Теодор        PERSON  ...   129  135
-23                           Марго        PERSON  ...   170  175
-24                           Элиас        PERSON  ...   195  200
-25                          Теодор        PERSON  ...   370  376
-26                           Элиас        PERSON  ...   366  371
-27                        студенты    PROFESSION  ...   463  471
-28                           Элиас        PERSON  ...     6   11
-29                        студенты    PROFESSION  ...   103  111
-30                           Марго        PERSON  ...   305  310
-31                           Элиас        PERSON  ...   339  344
-32                          Теодор        PERSON  ...   374  380
-33                           Элиас        PERSON  ...    35   40
-34                          Теодор        PERSON  ...    70   76
-35                           Марго        PERSON  ...   129  134
-36                           Элиас        PERSON  ...   225  230
-37                           Марго        PERSON  ...   157  162
-38                           Элиас        PERSON  ...   213  218
-39                        студенты    PROFESSION  ...   305  313
+/home/solovev023/RAGU/.venv/lib/python3.12/site-packages/transformers/generation/configuration_utils.py:677: UserWarning: `num_beams` is set to 1. However, `early_stopping` is set to `True` -- this flag is only used in beam-based generation modes. You should set `num_beams>1` or unset `early_stopping`.
+  warnings.warn(
+CHUNKS                                                 chunk                          chunk_id
+0   Бьёрнстьерне Ма́ртиниус Бьёрнсон (норв. Bjørns...  f337ba2a224431d41aeb8944059b279e
+1   лександр Хьелланн. Бьёрнсон написал слова норв...  4f9c7b484a3cf7ef4fb1f3787a1835f1
+2   вели в приход Нессет, недалеко от города Молде...  bc7a2e548840aeb2162c57820ef59a88
+3   ись Ибсен, Ли и Винье. В это время Бьёрнсон ос...  3dfdeb91de8f65aaf86b38c476132351
+4   58 году за ним последовал «Арне» (Arne), в 186...  a1450eba8b2adc48ef2b6964bd15144b
+5   lke-stykker). Самой ранней из них была одноакт...  309b077841edf1fa16a3c037532a455b
+6   ой его работой на этот момент была поэтическая...  cc497202278187900dfc280670c253c9
+7   ене. Эту должность он занимал два года, пока н...  a186c64b4ea331e1c91fd2b60b22fe6e
+8   and). В 1870 году Бьёрнсон опубликовал свои «П...  d6a700dd1d04d78f3954b17830181644
+9   по всей Скандинавии. С 1874 по 1876 год Бьёрнс...  92c0de8e9c8dd5145aaa6f08db40d3dd
+10  Гёусдале. В 1877 году он опубликовал ещё один ...  8ce0f8eb4e6585b73ec1bcc341e47bbf
+11  1878 году Бьёрнсон написал роман «Капитан Манс...  34d83d0c76e4f43f261ea77785579756
+12  ена через несколько недель. Хотя эти пьесы вто...  ff1ff0884a19e7eaf5e6e85ae4ee432c
+13  первую часть символической драмы «Сверх сил» (...  07980b3f1d8508000ca1ce716df712f3
+14  вижения. В этом вопросе он поддерживал Ивара О...  61ff8a2fea60647266fb529034998031
+15  взяли верх. При открытии Бьёрнсон выступил с р...  5ac7dce89ed7fbff743bd44e4b414177
+16  привели к обвинению его в государственной изме...  8837ca00c77da1b7977c5074285e11f0
+17  ё один длинный и не менее заметный роман, «По ...  a4cce931ca9ca1ceb7c88bbca36de02d
+18  ом. Ряд рассказов об эмоциональных переживания...  342e5da5725eba61429b6a2eebab3b37
+19  (Over oevne, annet stykke, II, 1895), Laboremu...  d097a66d87d22a89e0ed817fb64d5bee
+20  онального языка в Норвегии, отличного от датск...  0f45b6d9cb90939e5c364ccccb39326c
+21  то не овладел этим языком мастерски. За послед...  c524e9b04781a24b1c81ac3112adee6a
+22  Дрейфуса, и, по словам современника, писал «в ...  4e08c3e2debb336d2ddcb8b0285364e3
+23  Нобелевскую премию мира, в котором он состоял ...  05a00c212b3f5cbfb211812a9813626e
+24  ические чувства, но в 1903 году, на грани разр...  e80500b0b0d2efc9ff1072f13c955fc5
+25  ейчас самое время держать наши рты закрытыми»....  629ad911c3e5141aa4db603cf22fe791
+26  ра (Lederer), А. Гейдука (Heyduk) и К. Калала ...  7b15d87825b0e777159bcdc71f8d6a74
+27  ультов и образования графом Альбертом Аппоньи ...  9bf2a53a39a356581249577a091fca97
+28  Бьёрнсон умер 26 апреля 1910 года в Париже, гд...  9c40b006ad0ef9202a0ffac5b960c368
+29  Бьёрнсон был сыном преподобного Педера Бьёрнсо...  8047234f4ea41709709732b451412932
+30  1869—1953)\nДагни Бьёрнсон (1871—1872)\nДагни ...  c3ebde563261bcde34667c2b04b03945
+31  ения\nДраматургия\nМежду битвами (Mellem Slage...  7d658ec7838da84a74899d8b3fd84bfe
+32  tøren, 1874). Король (Kongen, 1876). Леонарда ...  5e30f60c58311cc1303febcadcb61d6a
+33  l Lange og Tora Parsberg, 1898). Laboremus (La...  622f61de088b3ed379a21a7b0b3bf92c
+34  Свадебный марш (Brudeslåtten, 1872). Капитан М...  6f2439c8130bd4ada3f50d6cd872514a
+35  ). Фред (Fred, 1891). Гимн Норвегии (Norges Ve...  e57a1ae8eb9b877d6e2c94c842a9a20f
+36  . — 47 с.; 20 см. — (Школа и читальня; № 90); ...  a294e199052205e2a69a26664fd55a1f
+37  ёрнстьерне Бьёрнсон «Перчатка». Перевод А. и П...  4ca4cf9c7319e238b54af9b221b5b05f
+38  анкротство. Редактор. Новая система. Свыше наш...  a481e725903743e241a13eb0e7b595ea
+39  ечания\nСсылки\n\nБЬЕРНСОН (Bjernson), Бьерист...  53e4282cda4b7a1818df05970381b732
+Model loaded from ragu/triplet/kg_small_models_pipeline/relation_model/BertRE/output_nerel_model on cuda.
+Skipping text:  not enough values to unpack (expected 2, got 1)
+Skipping text:  not enough values to unpack (expected 2, got 1)
+Skipping text:  not enough values to unpack (expected 2, got 1)
+Skipping text:  not enough values to unpack (expected 2, got 1)
+Skipping text:  not enough values to unpack (expected 2, got 1)
+Skipping text:  not enough values to unpack (expected 2, got 1)
+Skipping text:  not enough values to unpack (expected 2, got 1)
+Skipping text:  not enough values to unpack (expected 2, got 1)
+EEEEEEE                           entity_name entity_type  ... start  end
+0    Бьёрнстьерне Ма́ртиниус Бьёрнсон      PERSON  ...     0   32
+1     Bjørnstjerne Martinius Bjørnson      PERSON  ...    40   71
+2    Нобелевской премии по литературе       AWARD  ...   179  211
+3                              Квикне        CITY  ...    97  103
+4                               Париж        CITY  ...   132  137
+..                                ...         ...  ...   ...  ...
+758                         Гутенберг     PRODUCT  ...   273  282
+759                       в 1910 году        DATE  ...   319  330
+760          Уильямом Мортоном Пэйном      PERSON  ...   331  355
+761                         Бьёрнсона      PERSON  ...   386  395
+762                      переводчиком  PROFESSION  ...   357  369
 
-[40 rows x 6 columns]
-QQQQQQQ (40, 6) (96, 11)
-WWWWWWW (40, 6) (96, 13)
-WWWWWWW Index(['entity_name', 'entity_type', 'description', 'chunk_id', 'start',
-       'end'],
-      dtype='object') Index(['source_entity', 'entity_type_1', 'start_1', 'end_1', 'target_entity',
-       'entity_type_2', 'start_2', 'end_2', 'chunk_id', 'desription',
-       'relation', 'relationship_description', 'relationship_strength'],
+[763 rows x 6 columns]
+QQQQQQQ (763, 6) (6366, 6)
+Generando descripciones para 763 entidades...
+Generando descripciones para 6366 relaciones...
+WWWWWWW (763, 4) (6366, 5)
+WWWWWWW Index(['entity_name', 'entity_type', 'description', 'chunk_id'], dtype='object') Index(['source_entity', 'target_entity', 'relationship_description',
+       'relationship_strength', 'chunk_id'],
       dtype='object')
-Summarizing entity descriptions:   0%|          | 0/1 [00:00<?, ?it/s]Summarizing entity descriptions: 100%|██████████| 1/1 [00:03<00:00,  3.52s/it]Summarizing entity descriptions: 100%|██████████| 1/1 [00:03<00:00,  3.52s/it]
-Summarizing relationship descriptions:   0%|          | 0/1 [00:00<?, ?it/s]Summarizing relationship descriptions: 100%|██████████| 1/1 [00:05<00:00,  5.32s/it]Summarizing relationship descriptions: 100%|██████████| 1/1 [00:05<00:00,  5.32s/it]
-Community summary:   0%|          | 0/1 [00:00<?, ?it/s]Community summary: 100%|██████████| 1/1 [00:01<00:00,  1.79s/it]Community summary: 100%|██████████| 1/1 [00:01<00:00,  1.79s/it]
+Summarizing entity descriptions:   0%|          | 0/13 [00:00<?, ?it/s]Summarizing entity descriptions:   8%|▊         | 1/13 [00:01<00:17,  1.44s/it]EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR: Summarizing entity descriptions:  23%|██▎       | 3/13 [00:01<00:04,  2.37it/s]Summarizing entity descriptions:  38%|███▊      | 5/13 [00:01<00:01,  4.23it/s] Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}Summarizing entity descriptions:  54%|█████▍    | 7/13 [00:01<00:00,  6.15it/s]
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR: Summarizing entity descriptions:  69%|██████▉   | 9/13 [00:01<00:00,  8.01it/s]Summarizing entity descriptions:  85%|████████▍ | 11/13 [00:02<00:00,  7.18it/s] Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}Summarizing entity descriptions: 100%|██████████| 13/13 [00:02<00:00,  9.03it/s]Summarizing entity descriptions: 100%|██████████| 13/13 [00:02<00:00,  5.46it/s]
+
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+Summarizing relationship descriptions:   0%|          | 0/26 [00:00<?, ?it/s]Summarizing relationship descriptions:   8%|▊         | 2/26 [00:00<00:01, 15.71it/s]EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR: Summarizing relationship descriptions:  15%|█▌        | 4/26 [00:00<00:01, 15.93it/s] Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}Summarizing relationship descriptions:  23%|██▎       | 6/26 [00:00<00:01, 15.65it/s]Summarizing relationship descriptions:  31%|███       | 8/26 [00:00<00:01, 15.93it/s]
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR: Summarizing relationship descriptions:  38%|███▊      | 10/26 [00:00<00:01, 14.00it/s] Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}Summarizing relationship descriptions:  46%|████▌     | 12/26 [00:00<00:00, 14.76it/s]Summarizing relationship descriptions:  54%|█████▍    | 14/26 [00:00<00:00, 13.59it/s]
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR: Summarizing relationship descriptions:  62%|██████▏   | 16/26 [00:01<00:00, 14.16it/s] Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}Summarizing relationship descriptions:  69%|██████▉   | 18/26 [00:01<00:00, 14.44it/s]Summarizing relationship descriptions:  77%|███████▋  | 20/26 [00:01<00:00, 14.03it/s]
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR: Summarizing relationship descriptions:  85%|████████▍ | 22/26 [00:01<00:00, 14.67it/s] Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}Summarizing relationship descriptions:  92%|█████████▏| 24/26 [00:01<00:00, 12.65it/s]Summarizing relationship descriptions: 100%|██████████| 26/26 [00:01<00:00, 14.37it/s]
+
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+Community summary:   0%|          | 0/11 [00:00<?, ?it/s]Community summary:  18%|█▊        | 2/11 [00:00<00:00, 13.12it/s]EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR: Community summary:  36%|███▋      | 4/11 [00:00<00:00, 13.26it/s] Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}Community summary:  55%|█████▍    | 6/11 [00:00<00:00, 14.18it/s]Community summary:  73%|███████▎  | 8/11 [00:00<00:00, 14.63it/s]
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR: Community summary:  91%|█████████ | 10/11 [00:00<00:00, 15.02it/s]Community summary: 100%|██████████| 11/11 [00:00<00:00, 15.06it/s]
 Some weights of the model checkpoint at DeepPavlov/rubert-base-cased were not used when initializing BertModel: ['cls.predictions.bias', 'cls.predictions.decoder.bias', 'cls.predictions.decoder.weight', 'cls.predictions.transform.LayerNorm.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.dense.bias', 'cls.predictions.transform.dense.weight', 'cls.seq_relationship.bias', 'cls.seq_relationship.weight']
 - This IS expected if you are initializing BertModel from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
 - This IS NOT expected if you are initializing BertModel from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.80it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.80it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.03it/s]
+ Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.05it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 49.44it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 94.94it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 109.97it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 109.37it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 108.22it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 108.02it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 117.72it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 101.60it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 105.50it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 141.82it/s]
+TTTTTTTTTTTTT
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 115.95it/s]
+YYYYYYYYYYYYY **Сущности**
+Сущность, тип сущности, описание сущности
+пять, NUMBER, дожили до взрослого возраста
+Mansana, PERSON, рассказ о недавней войне за объединение Италии
+руководителя театра, PROFESSION, занимался политикой и своей работой
+шестеро, NUMBER, детей, пять из которых дожили до взрослого возраста
+8 декабря 1832, DATE, место обсуждения норвежского писателя
+телеграмму, EVENT, отправил премьер-министру Норвегии
+№ 3, ORDINAL, сборник произведений
+Франция, COUNTRY, регион, где норвежский писатель был написал слова нового национального гимна «Да, мы любим этот край»
+Kong, PROFESSION, участник Драматографии Между битвами, 1861 и 1863
+1880—1973, DATE, родился сын Андерс Ундердал
+венгерском парламенте, ORGANIZATION, Школьный закон, продвинутый министром культов и образования графом Альбертом Аппоньи
+премьер-министру Норвегии, PROFESSION, отправил телеграмму Бьёрнсону
+А. П. Зенкевич, PERSON, переводчик романа
+1865, DATE, дата начала драмографии Между битвами
+Два, NUMBER, персонажи рассказа Бьернстьерне-Бьернссона
+В 1857 году, DATE, время опубликования первого романа o крестьянской жизни
+1873, DATE, дата, которой король Эйстейн получил банкротство
+Maria Stuart, PERSON, писатель, который создал романтическую трагедию
+В 1889 году, DATE, время, когда напечатал длинный и не менее заметный роман «По Божьему пути»
+правыми, IDEOLOGY, участники противостояния между левыми и правыми
+
+**Отношения**
+Сущность-источник, целевая сущность, описание отношения, ранг отношения
+1903 года, 8 декабря 1832, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+26 апреля 1910, 8 декабря 1832, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, Александр Хьелланн, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, Генрик Ибсен, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, Нобелевской премии по литературе, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, Париж, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, Франция, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, Юнас Ли, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, норвежских, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, писателей, место рождения Бьёрнсона, 30
+8 декабря 1832, писатель, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, три, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, четырёх, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, Bjørnstjerne Martinius Bjørnson, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+8 декабря 1832, Бьёрнстьерне Ма́ртиниус Бьёрнсон, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+26 апреля 1910, Франция, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+Bjørnstjerne Martinius Bjørnson, Франция, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+Бьёрнстьерне Ма́ртиниус Бьёрнсон, Франция, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+Париж, Франция, город, где норвежский писатель Бьёрнсон родился 8 декабря 1832, 30
+1903 года, Франция, лауреат Нобелевской премии по литературе, 30
+Александр Хьелланн, Франция, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+Генрик Ибсен, Франция, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+Нобелевской премии по литературе, Франция, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+Франция, Юнас Ли, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+Франция, норвежских, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+Франция, писателей, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+Франция, писатель, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+Франция, три, норвежский писатель, 30
+Франция, четырёх, норвежский писатель, лауреат Нобелевской премии по литературе 1903 года, 30
+1859—1942, пять, дети, которых дожили до взрослого возраста, 16
+1864—1942, пять, дожили до взрослого возраста, 16
+1868—1959, пять, возраст, до которого дожили шести детей, 16
+Берглиот Бьёрнсон, пять, дети, дожили до взрослого возраста, 16
+Бьёрн Бьёрнсон, пять, имели шестеро детей, 16
+Эйнар Бьёрнсон, пять, дожили до взрослого возраста, 16
+Эрлинг Бьёрнсон, пять, дожили до взрослого возраста, 16
+пять, шестеро, дети, дожили до взрослого возраста, 16
+1859—1942, шестеро, дети, пять из которых дожили до взрослого возраста, 16
+1864—1942, шестеро, упоминается как сын Педера Бьёрнсона и Ингер Элисы Нордрок, 16
+1868—1959, шестеро, возраст взрослого возраста, у которого было пять детей, 16
+Берглиот Бьёрнсон, шестеро, детей, пять из которых дожили до взрослого возраста, 16
+Бьёрн Бьёрнсон, шестеро, дети, дожили до взрослого возраста, 16
+Эйнар Бьёрнсон, шестеро, детей, пять из которых дожили до взрослого возраста, 16
+Эрлинг Бьёрнсон, шестеро, семейство, в которой было шестеро детей, 16
+Датские, № 3, сборник датских писателей, 16
+Фиорды, № 3, книга о Дикий лесе, 16
+писатели, № 3, сборник писателей в переводах А. и П. Ганзен, 16
+СПБ, № 3, продукт, организованный Б. Бьернсоном в Санкт-Петербурге, 16
+1880—1973, Андерс Ундердал, родился сын Дагни Бьёрнсону в Эулестаде, 15
+1880—1973, Бьёрнсону, умерла в 1934 году после смерти Каролина Бьёрнсона, 15
+1880—1973, Гури Андерсдоттер, умерла в 1949 году, когда Бьёрнсон родился сын Андерс Ундердал, 15
+шведские, № 3, сборник автора, 14
+1911, № 3, тема сборника Бьернсона в т-ве А. Ф. Маркс, 14
+А. Ф. Маркс, № 3, литературный сборник, выпуска которого 1911, 14
+Изд-е т-ва А. Ф. Маркс, № 3, произведение искусства, 14
+17-летней, 1880—1973, умерла в 1949 году, 14
+1880—1973, к пятидесяти, когда Бьёрнсон был к пятидесяти, у него начался роман с 17-летней Гури Андерсдоттер, 14
+1880—1973, в 1949 году, умерла Каролина Бьёрнсон в 1949 году, 12
+Антона Штефаника, венгерском парламенте, ученик Антона Штефаника, восклицал Школьный закон, 10
+Школьный закон, венгерском парламенте, инициатива министра культов и образования графа Альберта Аппоньи, 10
+венгерском, венгерском парламенте, Школьный закон, продвинутый министром культов и образования графом Альбертом Аппоньи, 10
+венгерском парламенте, министром культов и образования графом, Школьный закон, продвинутый в венгерском парламенте Альбертом Аппоньи, 10
+венгерском парламенте, священника, Школьный закон, продвинутый министром культов и образования графом Альбертом Аппоньи, 10
+1862, 1865, дата рождения Сигурда Злой, 10
+1865, Redaktøren, организация, где работал Редактор, 10
+1852 году, В 1857 году, период обучения Бьёрнсона, 10
+В 1857 году, В 1858 году, опубликованный первый роман o крестьянской жизни, 10
+В 1857 году, первый, опубликованный роман и произведение, написанное Бьёрнсом, 10
+В 1857 году, журналиста, карьеру начал Бьёрнсон, 10
+В 1857 году, университет Осло, университет Осло, в котором поступил Бьёрнсон, 10
+1865, Kong, дата рождения короля Сверре, 9
+Kong, Maria Stuart i, фигура в династии Kong, 9
+1865, 1873, дата рождения короля Эйстейна, 9
+1865, Эйстейн, роль короля Эйстейна, 9
+1873, Maria Stuart i, участник театра Между битвами, 9
+левые, правыми, участники борьбы с левыми и правыми, 9
+А. П. Зенкевич, Изящная Литература, журнал «Изящная Литература», No 7, 1883, 8
+1865, Eystein, дата создания императора Эйстейна, 8
+Вергеланну, правыми, возникло противостояние между левыми и правыми, 8
+левыми, правыми, участники политической борьбе, 8
+памятник Вергеланну, правыми, организация, между которой были противостояния левыми и правыми, 8
+Kong, Redaktøren, роль короля и короле, 7
+А. П. Зенкевич, В. Э. Фирсова, организация, 7
+А. П. Зенкевич, Два, книга, в которой опубликован рассказ Бьернстьерне-Бьеренсона, 7
+Два, Изящная Литература, журнал «Изящная Литература», No 7, 1883, 7
+1873, Redaktøren, дата рождения Редактора, 7
+1878 году, Mansana, была выпущена через несколько недель, 6
+Det ny system, Mansana, была выпущена через несколько недель, 6
+Mansana, Новая система, пьеса, принятая Бьёрнсоном в 1878 году, 6
+В 1905 году, телеграмму, премьер-министр Норвегии написал телеграмму Премьер- министру Норвежии, 6
+Министр, телеграмму, премьер-министр Норвегии написал телеграмму, 6
+премьер-министру Норвегии, телеграмму, обращение Бьёрнсона, 6
+В 1905 году, премьер-министру Норвегии, премьер-министр Норвегии с телеграммой, 6
+Министр, премьер-министру Норвегии, обращается к премьер-министру Норвегии с словами «Настало время поддержать единый фронт», 6
+7, А. П. Зенкевич, журнал «Изящная Литература», 6
+В. Э. Фирсова, Два, норвежский автор рассказа Бьернстьерне-Бьернссона, 6
+Maria Stuart, В начале 1865 года, назначен на управлять театром Христиании, 6
+Maria Stuart, Молодожёны, комедия, которую ене начал управлять театром Христиании, 6
+Maria Stuart, театром Христиании, работает в начале 1865 года и начал управлять театром Христиании, 6
+Det flager i byen og på havnen, В 1889 году, опубликовал роман «Флаги реют над городом и над гаванью», 6
+В 1889 году, Флаги реют над городом и над гаванью, опубликовал роман «Det flager i byen og på havnen», 6
+В 1889 году, в 1884 году, опубликовал «Флаги реют над городом и над гаванью», 6
+Между 1864 и 1874 годами, руководителя театра, работал в основном в политике и своей работой, 4
+В 1871 году, руководителя театра, умер в Норвегии, 4
+
+**Саммари**
+
+
+**Тексты**
+Бьёрнсон был сыном преподобного Педера Бьёрнсона и Ингер Элисы Нордрок. Он женился на Каролине Реймерс (1835—1934) в 1858 году. У них было шестеро детей, пять из которых дожили до взрослого возраста:
+
+Бьёрн Бьёрнсон (1859—1942)
+Эйнар Бьёрнсон (1864—1942)
+Эрлинг Бьёрнсон (1868—1959)
+Берглиот Бьёрнсон (1869—1953)
+Дагни Бьёрнсон (1871—1872)
+Дагни Бьёрнсон (1876—1974)
+Каролина Бьёрнсон жила в Эулестаде до своей смерти в 1934 году.
+1878 году Бьёрнсон написал роман «Капитан Мансана» (Kaptejn Mansana), посвящённый эпизоду недавней войны за объединение Италии. Стремясь получить максимальный успех на сцене, Бьёрнсон сосредоточил свои силы на драме «Леонарда» (Leonarda, 1879) о социальной жизни, драма вызвала ожесточённые споры. Сатирическая пьеса «Новая система» (Det ny system) была выпущена через несколько недель. Хотя эти пьесы второго периода Бьёрнсона широко обсуждались, немногие из них были финансово успешны.
+and). В 1870 году Бьёрнсон опубликовал свои «Поэмы и песни» (Digte og Sange) и эпический цикл «Арнлют Геллин» (Arnljot Gelline). Между 1864 и 1874 годами Бьёрнсон в основном занимался политикой и своей работой руководителя театра. В этот период Бьёрнсон проявился как радикальный агитатор. В 1871 году он начал дополнять свою журналистскую работу лекциями по всей Скандинавии. С 1874 по 1876 год Бьёрнсон не был в Норвегии, и в этой добровольной ссылке он восстановил творческие силы.
+Бьёрнстьерне Ма́ртиниус Бьёрнсон (норв. Bjørnstjerne Martinius Bjørnson; 8 декабря 1832, деревня Квикне, Норвегия — 26 апреля 1910, Париж, Франция) — норвежский писатель, лауреат Нобелевской премии по литературе 1903 года. Бьёрнсона считают одним из четырёх великих норвежских писателей; остальные три — Генрик Ибсен, Юнас Ли и Александр Хьелланн. Бьёрнсон написал слова норвежского национального гимна «Да, мы любим этот край» (Ja, vi elsker dette landet).
+ические чувства, но в 1903 году, на грани разрыва между Норвегией и Швецией, он выступал в Норвегии за примирение и умеренность. В 1905 году, когда Норвегия пыталась разорвать насильственно навязанную унию со Швецией, Бьёрнсон отправил телеграмму премьер-министру Норвегии со словами: «Настало время поддержать единый фронт». Министр ответил: «Сейчас самое время держать наши рты закрытыми». Бьёрнсон и словаки
+В возрасте 75 лет Бьёрнсон познакомился со Словацким вопросом.
+ёрнстьерне Бьёрнсон «Перчатка». Перевод А. и П. Ганзен. Издание 2-е. Издание т-ва «Знание», Санкт-Петербург 1903 г.
+Б. Бьернсон. Когда цветет молодое вино. Комедия // Фиорды. Дикий лес.(Датские, норвежские, шведские писатели в переводах А. и П. Ганзен). Сборник № 3. СПБ. Изд-е т-ва А. Ф. Маркс 1911. Б. Бьернсон. Пьесы (Хульда-Хромоножка. Банкротство. Редактор. Новая система. Свыше наших сил, I—II). Библиотека драматурга. Пер. с норв. Вступительная статья В. Адмони.
+ения
+Драматургия
+Между битвами (Mellem Slagene, 1856). Хульда-Хромоножка (Halte-Hulda, 1857). Король Сверре (Kong Sverre, 1861). Сигурд Злой (Sigurd Slembe, 1862). Мария Стюарт в Шотландии (Maria Stuart i Skotland, 1863). Молодожёны (De Nygifte, 1865). Сигурд Крестоносец (Sigurd Jorsalafar, 1872). Король Эйстейн (Kong Eystein, 1873). Банкротство (En fallit, 1874). Редактор (Redaktøren, 1874). Король (Kongen, 1876). Леонарда (Leonarda, 1879). Новая система (Det ny system, 1879). Перчатка (En hanske, 1883).
+1869—1953)
+Дагни Бьёрнсон (1871—1872)
+Дагни Бьёрнсон (1876—1974)
+Каролина Бьёрнсон жила в Эулестаде до своей смерти в 1934 году. Когда Бьёрнсону было к пятидесяти, у него начался роман с 17-летней Гури Андерсдоттер (умерла в 1949 году), в результате которого у них родился сын Андерс Ундердал (1880—1973). Андерс стал отцом будущей писательницы Маргит Сандему. Сочинения
+Драматургия
+Между битвами (Mellem Slagene, 1856). Хульда-Хромоножка (Halte-Hulda, 1857). Король Сверре (Kong Sverre, 1861).
+ра (Lederer), А. Гейдука (Heyduk) и К. Калала (Kálal). Они писали о нации, «осуждённой на смерть на Венгерском острове свободы». Большой фактический материал Бьёрнсон почерпнул в статьях словацкого священника Антона Штефаника, который восклицал:  Особое возмущение вызывал Школьный закон, продвинутый в венгерском парламенте министром культов и образования графом Альбертом Аппоньи (Apponyi Albert) и запрещавший употребление словацкого языка в учебных заведениях.
+). Фред (Fred, 1891). Гимн Норвегии (Norges Vel, 1909). Издание сочинений в русском переводе
+Дочь Рыбачки (Fiskerjenten). Роман. Перевод А. П. Зенкевич.// журнал «Изящная Литература», № 7, 1883. Два деятеля. Рассказ Бьернстьерне-Бьернсона / Перевод с норвежского В. Э. Фирсова. — Санкт-Петербург: С.-Петерб. ком. грамотности, состоящий при Имп. Вольн. экон. о-ве, 1895. — 47 с.; 20 см. — (Школа и читальня; № 90); Свадебный марш. Повесть Бьернстьерне-Бьернсона / Перевод В. Э. Форселлеса-Фирсова.
+ись Ибсен, Ли и Винье. В это время Бьёрнсон осознал, что хочет продолжить заниматься поэзией (он писал стихи с одиннадцати лет). Он поступил в университет Осло в 1852 году и вскоре начал карьеру журналиста, сосредоточившись на критике драмы. Раннее творчество
+В 1857 году Бьёрнсон опубликовал «Сюннёве Сульбаккен» (Synnøve Solbakken), свой первый роман о крестьянской жизни. В 1858 году за ним последовал «Арне» (Arne), в 1860 году — «Весёлый парень» (En glad Gut), а в 1868 году — «Рыбачка» (Fiskerjenten).
+ене. Эту должность он занимал два года, пока не вернулся в Христианию. С 1860 по 1863 год он много путешествовал по всей Европе. В начале 1865 года он начал управлять театром Христиании, где поставил свою комедию «Молодожёны» (De Nygifte) и романтическую трагедию «Мария Стюарт в Шотландии» (Maria Stuart i Skotland). В 1870 году Бьёрнсон опубликовал свои «Поэмы и песни» (Digte og Sange) и эпический цикл «Арнлют Геллин» (Arnljot Gelline).
+привели к обвинению его в государственной измене, и он на некоторое время укрылся в Германии, вернувшись в Норвегию в 1882 году. Убеждённый, что театр практически закрыт для него, он вернулся к романам, и опубликовал в 1884 году «Флаги реют над городом и над гаванью» (Det flager i byen og på havnen), воплотив свои теории о наследственности и воспитании. В 1889 году он напечатал ещё один длинный и не менее заметный роман, «По Божьему пути» (På guds veje), который главным образом связан с теми же проблемами.
+вижения. В этом вопросе он поддерживал Ивара Осена, с которым объединял свои усилия в политической борьбе в 1860-х и 70-х годах. Когда в 1881 году возводился большой памятник Вергеланну, между левыми и правыми из-за него возникло противостояние, в котором левые взяли верх. При открытии Бьёрнсон выступил с речью о Вергеланне, в которой также уважительно отозвался о конституции и фермерах.
+
+
+EEEERRRROOOORRRR:  Error code: 401 - {'error': {'message': "rpc error: code = Unauthenticated desc = Unknown api key 'bond****_ner (C4F690E9)'", 'type': 'authentication_error'}}
 None
+Traceback (most recent call last):
+  File "/home/solovev023/RAGU/main.py", line 111, in <module>
+    for q in queries[:5]:
+             ~~~~~~~^^^^
+TypeError: 'generator' object is not subscriptable

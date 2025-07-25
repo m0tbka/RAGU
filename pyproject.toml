@@ -31,6 +31,7 @@ dependencies = [
     "pip>=25.1.1",
     "langchain-openai>=0.3.28",
     "pyarrow==16.1.0",
+    "llama-index>=0.12.52",
 ]
 
 [project.optional-dependencies]

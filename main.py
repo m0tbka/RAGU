@@ -34,7 +34,7 @@ class RAGDataset:
         documents = [doc['page_content'] for doc in self.documents_dataset]
         if use_llama_index_type:
             documents = [Document(text=doc) for doc in documents]
-        return documents
+        return documents[:1]
     
     def get_number_of_queries(self) -> int:
         return len(self.qa_dataset)
@@ -44,8 +44,8 @@ class RAGDataset:
             yield entry["inputs"]["text"], entry["outputs"]
 
 
-qa_path = ""
-documents_path = ""
+qa_path = "qa.json"
+documents_path = "documents.json"
 amogus_reader = RAGDataset(qa_path, documents_path)
 
 text = amogus_reader.get_documents()
@@ -74,7 +74,7 @@ chunker = SimpleChunker(
 #)
 # Initialize a graph builder pipeline
 
-key = ""
+key = "bond005/runne_contrastive_ner"
 client = RemoteLLM("gpt://b1go6qinn0muj8gb8k4o/yandexgpt/latest", "https://llm.api.cloud.yandex.net/v1", key)
 #print(client.generate("Привет, Дроид! Мне нужна твоя помощь, чтобы узнать больше о Силе. Как я могу научиться ее использовать?", "Ты ассистент дроид, способный помочь в галактических приключениях."))
 
@@ -104,10 +104,14 @@ index.make_index(knowledge_graph)
 local_search = LocalSearchEngine(client,
 knowledge_graph, embedder, index)
 
-<<<<<<< HEAD
+#<<<<<<< HEAD
 print("TTTTTTTTTTTTT")
 print(local_search.query("Как звали детей последнего императора Российской Империи?"))
-=======
+#=======
+i = 0
 for q in queries:
-    print(local_search.query("Как звали детей последнего императора Российской Империи?"))
->>>>>>> dc28e992696f0ef0edec7388b68e62efed7f1427
+    print(local_search.query(q))
+    i += 1
+    if i > 5:
+        break
+#>>>>>>> dc28e992696f0ef0edec7388b68e62efed7f1427
