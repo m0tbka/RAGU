@@ -74,7 +74,7 @@ chunker = SimpleChunker(
 #)
 # Initialize a graph builder pipeline
 
-key = "bond005/runne_contrastive_ner"
+key = "AQVN2EAPcvGE4WvehCSb1kl29NUbsnF9rjkv5Vw5"
 client = RemoteLLM("gpt://b1go6qinn0muj8gb8k4o/yandexgpt/latest", "https://llm.api.cloud.yandex.net/v1", key)
 #print(client.generate("Привет, Дроид! Мне нужна твоя помощь, чтобы узнать больше о Силе. Как я могу научиться ее использовать?", "Ты ассистент дроид, способный помочь в галактических приключениях."))
 
