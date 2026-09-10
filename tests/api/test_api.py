@@ -56,6 +56,14 @@ def make_entity(name: str) -> Entity:
     )
 
 
+def make_backend(**overrides):
+    """A RaguBackend for the single graph the flat settings describe."""
+    from ragu.api.backends.ragu_backend import RaguBackend
+
+    settings = ServiceSettings(backend="ragu", **overrides)
+    return RaguBackend(settings, settings.resolved_graphs()[0])
+
+
 def make_retrieval(*contents: str) -> NaiveSearchRetrieve:
     return NaiveSearchRetrieve(
         query="sub",
@@ -543,9 +551,7 @@ class TestEngineInvocation:
             ]
 
     def build_backend(self, **overrides):
-        from ragu.api.backends.ragu_backend import RaguBackend
-
-        backend = RaguBackend(ServiceSettings(backend="ragu", **overrides))
+        backend = make_backend(**overrides)
         backend.graph = object()
         backend._llm = object()
         backend._stats = GraphStats(
@@ -841,7 +847,7 @@ class TestShutdown:
         class FakeClient:
             client = FakeHTTPClient()
 
-        backend = RaguBackend(ServiceSettings(backend="ragu"))
+        backend = make_backend()
         backend.graph = FakeGraph()
         backend._stats = GraphStats(entities=1)
         backend._clients = [FakeClient()]
@@ -1103,9 +1109,7 @@ class TestMixDegradation:
             raise RuntimeError("entity vector store unreachable")
 
     def build_backend(self):
-        from ragu.api.backends.ragu_backend import RaguBackend
-
-        backend = RaguBackend(ServiceSettings(backend="ragu"))
+        backend = make_backend()
         backend.graph = object()
         backend._stats = GraphStats(
             entities=1, relations=1, chunks=1, community_summaries=1
@@ -1292,7 +1296,7 @@ class TestBatchRoutes:
                     for query in queries
                 ]
 
-        backend = RaguBackend(ServiceSettings(backend="ragu"))
+        backend = make_backend()
         backend.graph = object()
         backend._stats = GraphStats(entities=1, chunks=1, community_summaries=1)
         backend._engines = {("naive", backend.settings.language): BatchSpy()}
@@ -1423,7 +1427,7 @@ class TestLanguagePerRequest:
             async def batch_search(self, queries, params=None):
                 return [make_retrieval("text") for _ in queries]
 
-        backend = RaguBackend(ServiceSettings(backend="ragu", **overrides))
+        backend = make_backend(**overrides)
         backend.graph = object()
         backend._llm = object()
         backend._embedder = object()
@@ -1502,3 +1506,169 @@ class TestLanguagePerRequest:
                 "/v1/search/naive", json={"query": "q", "language": "russian"}
             )
         assert response.status_code == 200
+
+
+def graphs_client(specs, **overrides) -> TestClient:
+    settings = ServiceSettings(backend="stub", graphs=specs, **overrides)
+    return TestClient(create_app(settings))
+
+
+class TestGraphCatalogue:
+    """Several graphs in one process, addressed by name."""
+
+    SPECS = [
+        {"id": "books", "storage_folder": "a", "language": "russian"},
+        {"id": "papers", "storage_folder": "b", "language": "english"},
+    ]
+
+    def test_the_catalogue_lists_every_graph(self):
+        with graphs_client(self.SPECS) as client:
+            body = client.get("/v1/graphs").json()
+        assert body["default"] == "books"
+        assert [graph["id"] for graph in body["graphs"]] == ["books", "papers"]
+        assert all(graph["loaded"] for graph in body["graphs"])
+
+    def test_each_graph_keeps_its_own_language(self):
+        with graphs_client(self.SPECS) as client:
+            body = client.get("/v1/graphs").json()
+        assert {g["id"]: g["language"] for g in body["graphs"]} == {
+            "books": "russian",
+            "papers": "english",
+        }
+
+    def test_a_graph_can_be_addressed_by_name(self):
+        with graphs_client(self.SPECS) as client:
+            body = client.post(
+                "/v1/graphs/papers/search/naive", json={"query": "q"}
+            ).json()
+        assert body["mode"] == "naive"
+        assert body["answer"].startswith("[stub naive]")
+
+    def test_the_flat_path_serves_the_default_graph(self):
+        # Kept for clients written before the service served more than one graph.
+        with graphs_client(self.SPECS) as client:
+            assert client.post("/v1/search/naive", json={"query": "q"}).status_code == 200
+
+    def test_an_unknown_graph_answers_404(self):
+        with graphs_client(self.SPECS) as client:
+            for path in ("/v1/graphs/missing", "/v1/graphs/missing/search/naive"):
+                response = (
+                    client.get(path)
+                    if path.endswith("missing")
+                    else client.post(path, json={"query": "q"})
+                )
+                assert response.status_code == 404
+                assert response.json()["error"]["code"] == "GRAPH_NOT_FOUND"
+
+    def test_every_search_shape_is_addressable_per_graph(self):
+        with graphs_client(self.SPECS) as client:
+            assert client.post(
+                "/v1/graphs/papers/search/naive/retrieve", json={"query": "q"}
+            ).status_code == 200
+            assert client.post(
+                "/v1/graphs/papers/search/naive/batch", json={"queries": ["a"]}
+            ).status_code == 200
+            assert client.post(
+                "/v1/graphs/papers/search/naive/stream", json={"query": "q"}
+            ).status_code == 200
+
+    def test_duplicate_ids_are_refused(self):
+        with pytest.raises(ValueError):
+            ServiceSettings(
+                backend="stub",
+                graphs=[
+                    {"id": "a", "storage_folder": "x"},
+                    {"id": "a", "storage_folder": "y"},
+                ],
+            )
+
+
+class TestCapabilitiesEndpoint:
+    """A client has to know which modes to offer before it offers them."""
+
+    def test_capabilities_name_the_available_modes(self):
+        with build_client() as client:
+            modes = client.get("/v1/graphs/default/capabilities").json()
+        assert {mode["mode"] for mode in modes} == {"global", "local", "naive", "mix"}
+        assert all(mode["available"] for mode in modes)
+        assert all(mode["reason"] is None for mode in modes)
+
+    def test_an_unavailable_mode_says_what_it_needs(self):
+        with build_client(missing="entity_graph") as client:
+            modes = {m["mode"]: m for m in client.get("/v1/graphs/default/capabilities").json()}
+
+        assert modes["naive"]["available"] is True
+        assert modes["local"]["available"] is False
+        assert modes["local"]["missing_capability"] == "entity_graph"
+        assert "entity index" in modes["local"]["reason"]
+        # mix ensembles local and naive, so it goes with local.
+        assert modes["mix"]["available"] is False
+
+    def test_the_same_view_is_on_the_graph_record(self):
+        with build_client(missing="vector_index") as client:
+            graph = client.get("/v1/graphs/default").json()
+        naive = next(m for m in graph["modes"] if m["mode"] == "naive")
+        assert naive["missing_capability"] == "vector_index"
+
+
+class TestSettingsIsolation:
+    """One graph's settings must not leak into the next one built."""
+
+    def test_the_singleton_is_restored(self):
+        from ragu.api.backends.ragu_backend import isolated_settings
+        from ragu.common.global_parameters import Settings
+
+        before = (Settings.storage_folder, Settings.language, Settings.llm_context_token_limit)
+
+        with isolated_settings():
+            Settings.storage_folder = "somewhere-else"
+            Settings.language = "portuguese"
+            Settings.llm_context_token_limit = 123
+
+        assert (
+            Settings.storage_folder,
+            Settings.language,
+            Settings.llm_context_token_limit,
+        ) == before
+
+    def test_it_restores_even_when_the_build_fails(self):
+        from ragu.api.backends.ragu_backend import isolated_settings
+        from ragu.common.global_parameters import Settings
+
+        before = Settings.language
+        with pytest.raises(RuntimeError):
+            with isolated_settings():
+                Settings.language = "portuguese"
+                raise RuntimeError("graph failed to load")
+        assert Settings.language == before
+
+    async def test_a_failing_graph_does_not_take_down_the_others(self):
+        from ragu.api.backends.stub import StubBackend
+        from ragu.api.registry import GraphRegistry
+
+        settings = ServiceSettings(
+            backend="stub",
+            graphs=[
+                {"id": "broken", "storage_folder": "a"},
+                {"id": "fine", "storage_folder": "b"},
+            ],
+        )
+
+        def factory(service_settings, spec):
+            if spec.id == "broken":
+                class Broken(StubBackend):
+                    async def startup(self):
+                        raise RuntimeError("storage folder is empty")
+
+                return Broken(service_settings, spec)
+            return StubBackend(service_settings, spec)
+
+        registry = GraphRegistry(settings, factory=factory)
+        await registry.startup()
+
+        assert registry.any_loaded is True
+        assert "storage folder is empty" in registry.error("broken")
+        assert registry.resolve("fine").graph_id == "fine"
+        with pytest.raises(Exception) as failure:
+            registry.resolve("broken")
+        assert "storage folder is empty" in str(failure.value)

@@ -12,19 +12,26 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import StreamingResponse
 
 from ragu.api.backends.base import (
+    MODE_REQUIREMENTS,
     RetrieveOutcome,
     SearchStreamEvent,
     SearchBackend,
     SearchCall,
     SearchOutcome,
 )
-from ragu.api.errors import RETRY_AFTER_SECONDS, ServiceNotReadyError
+from ragu.api.errors import (
+    RETRY_AFTER_SECONDS,
+    GraphNotFoundError,
+    ServiceNotReadyError,
+)
 from ragu.api.models import (
     BatchSearchItem,
     BatchSearchResponse,
     EngineReport,
     ErrorBody,
     ErrorResponse,
+    GraphInfo,
+    GraphListResponse,
     GlobalBatchRequest,
     GlobalRetrieveRequest,
     GlobalSearchRequest,
@@ -35,6 +42,7 @@ from ragu.api.models import (
     MixBatchRequest,
     MixRetrieveRequest,
     MixSearchRequest,
+    ModeAvailability,
     NaiveBatchRequest,
     NaiveRetrieveRequest,
     NaiveSearchRequest,
@@ -44,6 +52,12 @@ from ragu.api.models import (
 )
 
 router = APIRouter()
+
+# Mounted under both /v1/graphs/{graph_id} and /v1: the graph is read from the
+# path when it is there and falls back to the default when it is not, so the
+# flat paths that predate the catalogue keep working.
+search_router = APIRouter()
+
 
 SEARCH_RESPONSES = {
     409: {
@@ -80,44 +94,86 @@ def _response(call: SearchCall, outcome: SearchOutcome) -> SearchResponse:
     )
 
 
-def _backend_of(request: Request) -> SearchBackend | None:
-    return getattr(request.app.state, "backend", None)
+def _registry(request: Request):
+    """
+    The graph catalogue, or ``None`` before the lifespan has run.
+    """
+    return getattr(request.app.state, "registry", None)
 
 
 def _health_of(request: Request) -> HealthResponse:
     """
-    Describe the current readiness of the service.
+    Describe the readiness of the service as a whole.
 
     :param request: Incoming request, for the application state.
-    :return: Health payload, including why the backend is not ready.
+    :return: Health payload; ready when at least one graph can answer.
     """
-    backend = _backend_of(request)
-    graph_loaded = bool(backend and backend.graph_loaded)
-    stats = backend.stats if backend is not None else None
+    registry = _registry(request)
+    loaded = bool(registry and registry.any_loaded)
+    stats = None
+    error = getattr(request.app.state, "startup_error", None)
+    if registry is not None:
+        default = registry.backend(registry.default_id)
+        stats = default.stats if default is not None else None
+        error = error or registry.error(registry.default_id)
     return HealthResponse(
-        status="ok" if graph_loaded else "degraded",
-        graph_loaded=graph_loaded,
+        status="ok" if loaded else "degraded",
+        graph_loaded=loaded,
         stats=stats.to_response() if stats is not None else None,
-        error=getattr(request.app.state, "startup_error", None),
+        error=error,
     )
 
 
 def get_backend(request: Request) -> SearchBackend:
     """
-    Resolve a backend that can serve searches.
+    Resolve the graph this request addresses.
 
-    :raises ServiceNotReadyError: If no graph is loaded, quoting the startup
-        failure when there was one.
+    :raises GraphNotFoundError: If the path names a graph that is not configured.
+    :raises ServiceNotReadyError: If that graph is not loaded.
     """
-    backend = _backend_of(request)
-    if backend is None or not backend.graph_loaded:
-        reason = getattr(request.app.state, "startup_error", None)
-        raise ServiceNotReadyError(
-            f"Knowledge graph is not loaded: {reason}"
-            if reason
-            else "Knowledge graph is not loaded yet."
+    registry = _registry(request)
+    if registry is None:
+        raise ServiceNotReadyError("The service is still starting up.")
+    return registry.resolve(request.path_params.get("graph_id"))
+
+
+def _mode_availability(backend: SearchBackend) -> list[ModeAvailability]:
+    """
+    Render which modes a graph can serve, and what the others would need.
+    """
+    return [
+        ModeAvailability(
+            mode=mode,
+            available=missing is None,
+            missing_capability=missing,
+            reason=None if missing is None else MODE_REQUIREMENTS[mode].missing_message,
         )
-    return backend
+        for mode, missing in backend.capabilities().items()
+    ]
+
+
+def _graph_info(request: Request, graph_id: str) -> GraphInfo:
+    """
+    Describe one graph, loaded or not.
+
+    :raises GraphNotFoundError: If it is not configured.
+    """
+    registry = _registry(request)
+    backend = registry.backend(graph_id) if registry is not None else None
+    if backend is None:
+        known = ", ".join(registry.ids) if registry is not None else "none"
+        raise GraphNotFoundError(
+            f"No graph named '{graph_id}'. Configured graphs: {known or 'none'}."
+        )
+    stats = backend.stats
+    return GraphInfo(
+        id=graph_id,
+        loaded=backend.graph_loaded,
+        language=backend.language,
+        stats=stats.to_response() if stats is not None else None,
+        modes=_mode_availability(backend),
+        error=registry.error(graph_id) if registry is not None else None,
+    )
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -194,8 +250,46 @@ def _retrieved(call: SearchCall, outcome: RetrieveOutcome) -> RetrieveResponse:
     )
 
 
-@router.post(
-    "/v1/search/global", response_model=SearchResponse, responses=SEARCH_RESPONSES
+
+
+GRAPH_RESPONSES = {404: {"model": ErrorResponse, "description": "No such graph"}}
+
+
+@router.get("/v1/graphs", response_model=GraphListResponse)
+async def list_graphs(request: Request) -> GraphListResponse:
+    """
+    Every graph this service serves, with its sizes and available modes.
+    """
+    registry = _registry(request)
+    if registry is None:
+        return GraphListResponse(default="", graphs=[])
+    return GraphListResponse(
+        default=registry.default_id,
+        graphs=[_graph_info(request, graph_id) for graph_id in registry.ids],
+    )
+
+
+@router.get(
+    "/v1/graphs/{graph_id}", response_model=GraphInfo, responses=GRAPH_RESPONSES
+)
+async def get_graph(request: Request, graph_id: str) -> GraphInfo:
+    return _graph_info(request, graph_id)
+
+
+@router.get(
+    "/v1/graphs/{graph_id}/capabilities",
+    response_model=list[ModeAvailability],
+    responses=GRAPH_RESPONSES,
+)
+async def graph_capabilities(request: Request, graph_id: str) -> list[ModeAvailability]:
+    """
+    Which search modes this graph can serve, and why the others cannot.
+    """
+    return _graph_info(request, graph_id).modes
+
+
+@search_router.post(
+    "/search/global", response_model=SearchResponse, responses=SEARCH_RESPONSES
 )
 async def search_global(
     payload: GlobalSearchRequest,
@@ -205,8 +299,8 @@ async def search_global(
     return _response(call, await _one(backend, backend.search(call), call.mode))
 
 
-@router.post(
-    "/v1/search/local", response_model=SearchResponse, responses=SEARCH_RESPONSES
+@search_router.post(
+    "/search/local", response_model=SearchResponse, responses=SEARCH_RESPONSES
 )
 async def search_local(
     payload: LocalSearchRequest,
@@ -216,8 +310,8 @@ async def search_local(
     return _response(call, await _one(backend, backend.search(call), call.mode))
 
 
-@router.post(
-    "/v1/search/naive", response_model=SearchResponse, responses=SEARCH_RESPONSES
+@search_router.post(
+    "/search/naive", response_model=SearchResponse, responses=SEARCH_RESPONSES
 )
 async def search_naive(
     payload: NaiveSearchRequest,
@@ -227,8 +321,8 @@ async def search_naive(
     return _response(call, await _one(backend, backend.search(call), call.mode))
 
 
-@router.post(
-    "/v1/search/mix", response_model=SearchResponse, responses=SEARCH_RESPONSES
+@search_router.post(
+    "/search/mix", response_model=SearchResponse, responses=SEARCH_RESPONSES
 )
 async def search_mix(
     payload: MixSearchRequest,
@@ -244,8 +338,8 @@ async def search_mix(
     return _response(call, await _one(backend, backend.search(call), call.mode))
 
 
-@router.post(
-    "/v1/search/global/retrieve",
+@search_router.post(
+    "/search/global/retrieve",
     response_model=RetrieveResponse,
     responses=SEARCH_RESPONSES,
 )
@@ -257,8 +351,8 @@ async def retrieve_global(
     return _retrieved(call, await _one(backend, backend.retrieve(call), call.mode))
 
 
-@router.post(
-    "/v1/search/local/retrieve",
+@search_router.post(
+    "/search/local/retrieve",
     response_model=RetrieveResponse,
     responses=SEARCH_RESPONSES,
 )
@@ -270,8 +364,8 @@ async def retrieve_local(
     return _retrieved(call, await _one(backend, backend.retrieve(call), call.mode))
 
 
-@router.post(
-    "/v1/search/naive/retrieve",
+@search_router.post(
+    "/search/naive/retrieve",
     response_model=RetrieveResponse,
     responses=SEARCH_RESPONSES,
 )
@@ -283,8 +377,8 @@ async def retrieve_naive(
     return _retrieved(call, await _one(backend, backend.retrieve(call), call.mode))
 
 
-@router.post(
-    "/v1/search/mix/retrieve",
+@search_router.post(
+    "/search/mix/retrieve",
     response_model=RetrieveResponse,
     responses=SEARCH_RESPONSES,
 )
@@ -349,8 +443,8 @@ async def _batched(
     )
 
 
-@router.post(
-    "/v1/search/global/batch",
+@search_router.post(
+    "/search/global/batch",
     response_model=BatchSearchResponse,
     responses=SEARCH_RESPONSES,
 )
@@ -361,8 +455,8 @@ async def batch_global(
     return await _batched("global", payload, backend)
 
 
-@router.post(
-    "/v1/search/local/batch",
+@search_router.post(
+    "/search/local/batch",
     response_model=BatchSearchResponse,
     responses=SEARCH_RESPONSES,
 )
@@ -373,8 +467,8 @@ async def batch_local(
     return await _batched("local", payload, backend)
 
 
-@router.post(
-    "/v1/search/naive/batch",
+@search_router.post(
+    "/search/naive/batch",
     response_model=BatchSearchResponse,
     responses=SEARCH_RESPONSES,
 )
@@ -392,8 +486,8 @@ async def batch_naive(
     return await _batched("naive", payload, backend)
 
 
-@router.post(
-    "/v1/search/mix/batch",
+@search_router.post(
+    "/search/mix/batch",
     response_model=BatchSearchResponse,
     responses=SEARCH_RESPONSES,
 )
@@ -432,7 +526,7 @@ async def _stream(mode: SearchMode, payload: Any, backend: SearchBackend) -> Res
     )
 
 
-@router.post("/v1/search/global/stream", responses=SEARCH_RESPONSES)
+@search_router.post("/search/global/stream", responses=SEARCH_RESPONSES)
 async def stream_global(
     payload: GlobalSearchRequest,
     backend: SearchBackend = Depends(get_backend),
@@ -440,7 +534,7 @@ async def stream_global(
     return await _stream("global", payload, backend)
 
 
-@router.post("/v1/search/local/stream", responses=SEARCH_RESPONSES)
+@search_router.post("/search/local/stream", responses=SEARCH_RESPONSES)
 async def stream_local(
     payload: LocalSearchRequest,
     backend: SearchBackend = Depends(get_backend),
@@ -448,7 +542,7 @@ async def stream_local(
     return await _stream("local", payload, backend)
 
 
-@router.post("/v1/search/naive/stream", responses=SEARCH_RESPONSES)
+@search_router.post("/search/naive/stream", responses=SEARCH_RESPONSES)
 async def stream_naive(
     payload: NaiveSearchRequest,
     backend: SearchBackend = Depends(get_backend),
@@ -463,9 +557,15 @@ async def stream_naive(
     return await _stream("naive", payload, backend)
 
 
-@router.post("/v1/search/mix/stream", responses=SEARCH_RESPONSES)
+@search_router.post("/search/mix/stream", responses=SEARCH_RESPONSES)
 async def stream_mix(
     payload: MixSearchRequest,
     backend: SearchBackend = Depends(get_backend),
 ) -> Response:
     return await _stream("mix", payload, backend)
+
+
+# The catalogue path is canonical; the flat one is kept for clients written
+# before the service served more than one graph.
+router.include_router(search_router, prefix="/v1/graphs/{graph_id}", tags=["search"])
+router.include_router(search_router, prefix="/v1", tags=["search"], deprecated=True)

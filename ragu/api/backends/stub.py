@@ -15,7 +15,7 @@ from ragu.api.backends.base import (
     SearchCall,
     SearchOutcome,
 )
-from ragu.api.config import ServiceSettings
+from ragu.api.config import DEFAULT_GRAPH_ID, GraphSpec, ServiceSettings
 from ragu.api.models import (
     ChildEngineReport,
     EngineReport,
@@ -47,8 +47,17 @@ class StubBackend(SearchBackend):
     """Canned backend. Which modes fail is driven by
     ``RAGU_API_STUB_MISSING_CAPABILITIES``."""
 
-    def __init__(self, settings: ServiceSettings | None = None):
-        super().__init__(settings or ServiceSettings(backend="stub"))
+    def __init__(
+        self,
+        settings: ServiceSettings | None = None,
+        spec: GraphSpec | None = None,
+    ):
+        settings = settings or ServiceSettings(backend="stub")
+        super().__init__(
+            settings,
+            graph_id=spec.id if spec else DEFAULT_GRAPH_ID,
+            language=spec.language if spec else None,
+        )
         self._missing = self.settings.missing_capabilities()
 
     async def startup(self) -> None:

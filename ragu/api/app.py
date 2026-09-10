@@ -8,8 +8,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from ragu.api.backends import build_backend
 from ragu.api.backends.base import SearchBackend
+from ragu.api.registry import GraphRegistry
 from ragu.api.config import ServiceSettings
 from ragu.api.errors import InvalidRequestError, RaguServiceError
 from ragu.api.routes import router
@@ -30,7 +30,8 @@ def create_app(
     Build the service application.
 
     :param settings: Service settings; read from the environment when omitted.
-    :param backend: Pre-built backend, used by tests to bypass graph loading.
+    :param backend: Pre-built backend, used by tests and by in-process embedding
+        to bypass the configured catalogue.
     :return: The configured application.
     """
     settings = settings or ServiceSettings()
@@ -39,17 +40,22 @@ def create_app(
     async def lifespan(app: FastAPI):
         app.state.settings = settings
         app.state.startup_error = None
-        app.state.backend = backend or build_backend(settings)
+        registry = (
+            GraphRegistry.of(settings, backend)
+            if backend is not None
+            else GraphRegistry(settings)
+        )
+        app.state.registry = registry
         try:
-            await app.state.backend.startup()
+            await registry.startup()
         except Exception as exc:
             # The service still starts so that /health can report *why* it is
             # not ready; without this the operator only ever sees a container
             # that restarts.
             app.state.startup_error = str(exc)
-            logger.opt(exception=True).error("Backend startup failed: {}", exc)
+            logger.opt(exception=True).error("Registry startup failed: {}", exc)
         yield
-        await app.state.backend.shutdown()
+        await registry.shutdown()
 
     app = FastAPI(
         title="RAGU Search Service",

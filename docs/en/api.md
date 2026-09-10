@@ -4,12 +4,13 @@
 1. [What it is](#what-it-is)
 2. [Running the service](#running-the-service)
 3. [Configuration](#configuration)
-4. [Search endpoints](#search-endpoints)
-5. [Health and readiness](#health-and-readiness)
-6. [Errors](#errors)
-7. [Design decisions](#design-decisions)
-8. [Logging](#logging)
-9. [Current limits](#current-limits)
+4. [The graph catalogue](#the-graph-catalogue)
+5. [Search endpoints](#search-endpoints)
+6. [Health and readiness](#health-and-readiness)
+7. [Errors](#errors)
+8. [Design decisions](#design-decisions)
+9. [Logging](#logging)
+10. [Current limits](#current-limits)
 
 ---
 
@@ -63,6 +64,7 @@ Service settings are `RAGU_API_*` environment variables, read by
 
 | Variable | Default | Meaning |
 |---|---|---|
+| `RAGU_API_GRAPHS` | — | Graphs to serve, as a JSON list. Unset means one graph from the flat variables |
 | `RAGU_API_BACKEND` | `ragu` | `ragu` loads a real graph, `stub` serves canned answers |
 | `RAGU_API_HOST` | `127.0.0.1` | Bind address; the container image passes `--host 0.0.0.0` itself |
 | `RAGU_API_PORT` | `8020` | Bind port |
@@ -87,16 +89,75 @@ LLM and embedder credentials come from the same `.env` the rest of RAGU uses
 (`ragu.common.env.Env`): `LLM_MODEL_NAME`, `LLM_BASE_URL`, `LLM_API_KEY`, and
 optionally `EMBEDDER_BASE_URL`, `EMBEDDER_API_KEY`, `EMBEDDER_MODEL_NAME`.
 
+## The graph catalogue
+
+One process serves several graphs. Each is named, and the name is a path
+segment:
+
+| Route | Returns |
+|---|---|
+| `GET /v1/graphs` | every graph with its sizes and available modes |
+| `GET /v1/graphs/{id}` | one graph |
+| `GET /v1/graphs/{id}/capabilities` | which modes it can serve, and why not the rest |
+
+```json
+{"default": "books",
+ "graphs": [{"id": "books", "loaded": true, "language": "russian",
+             "stats": {"entities": 128400, "relations": 170233,
+                       "chunks": 9812, "community_summaries": 341},
+             "modes": [{"mode": "local", "available": true,
+                        "missing_capability": null, "reason": null},
+                       {"mode": "global", "available": false,
+                        "missing_capability": "community_summaries",
+                        "reason": "This graph carries no community summaries..."}],
+             "error": null}]}
+```
+
+`capabilities` exists so a client can grey out the modes a corpus cannot serve
+instead of offering them and reading the 409.
+
+Configure the catalogue with `RAGU_API_GRAPHS`, a JSON list:
+
+```bash
+RAGU_API_GRAPHS='[{"id":"books","storage_folder":"/data/books","language":"russian"},
+                  {"id":"papers","storage_folder":"/data/papers","language":"english",
+                   "embedder_dim":1024}]'
+```
+
+Each entry takes `id`, `storage_folder`, and optionally `language`,
+`settings_file` and `embedder_dim`. With the variable unset, one graph named
+`default` is built from the flat `RAGU_API_STORAGE_FOLDER` / `RAGU_API_LANGUAGE`
+variables, so a single-graph deployment needs no catalogue.
+
+A graph that fails to load is recorded and skipped: the others stay servable and
+`/v1/graphs` reports why that one is missing.
+
+### How several graphs fit in one process
+
+`Settings` is a process-wide singleton, and `Index` reads
+`Settings.storage_folder` in its constructor. It is read *only* there, and the
+embedder and engines likewise read their token limits and tokenizer names at
+construction — so the registry builds graphs one at a time, applies that graph's
+settings around the construction, and rolls the singleton back afterwards.
+
+Engines built later — one per language, on demand — would otherwise pick up
+whatever the singleton holds by then, so the backend captures the token limit
+and tokenizer at load time and passes them explicitly.
+
 ## Search endpoints
 
 Four modes — `global`, `local`, `naive`, `mix` — each in four shapes:
 
+Every search route lives under a graph. `POST /v1/graphs/{id}/search/{mode}`
+is canonical; the flat `POST /v1/search/{mode}` is kept for clients written
+before the service served more than one graph and addresses the default graph.
+
 | Route | Returns |
 |---|---|
-| `POST /v1/search/{mode}` | one answer with its sources |
-| `POST /v1/search/{mode}/retrieve` | context only, nothing generated |
-| `POST /v1/search/{mode}/batch` | one answer per query in `queries` |
-| `POST /v1/search/{mode}/stream` | the answer as Server-Sent Events |
+| `POST /v1/graphs/{id}/search/{mode}` | one answer with its sources |
+| `POST /v1/graphs/{id}/search/{mode}/retrieve` | context only, nothing generated |
+| `POST /v1/graphs/{id}/search/{mode}/batch` | one answer per query in `queries` |
+| `POST /v1/graphs/{id}/search/{mode}/stream` | the answer as Server-Sent Events |
 
 `mix` ensembles the local and naive engines. Its child parameters are named
 separately — `local_params` and `naive_params` — because `MixSearchEngine` reads
@@ -264,6 +325,7 @@ All errors share one envelope:
 | Status | Code | Situation |
 |---|---|---|
 | 400 | `INVALID_REQUEST` | empty `query`, bad field type, unknown field |
+| 404 | `GRAPH_NOT_FOUND` | the path names a graph that is not configured |
 | 409 | `CAPABILITY_UNAVAILABLE` | the graph cannot serve this mode, or this query found nothing |
 | 503 | `SERVICE_NOT_READY` | graph not loaded, or startup failed; carries `Retry-After` |
 | 500 | `INTERNAL_ERROR` | LLM unavailable, embedder timeout, engine failure |
@@ -325,9 +387,6 @@ yourself if you want the same behaviour.
 
 Known gaps, listed so they are not mistaken for oversights:
 
-- **One graph per process.** `Settings` is a process-wide singleton and
-  `Index` reads `Settings.storage_folder` in its constructor, so a process
-  serves exactly one graph.
 - **No ingestion over HTTP.** The service cannot build or extend a graph;
   `build_from_docs` and the graph CRUD surface of `KnowledgeGraph` are not
   exposed.

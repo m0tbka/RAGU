@@ -7,7 +7,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
-from ragu.api.config import ServiceSettings
+from ragu.api.config import DEFAULT_GRAPH_ID, ServiceSettings
 from ragu.api.errors import CapabilityUnavailableError, InvalidRequestError
 from ragu.api.models import (
     Capability,
@@ -256,12 +256,22 @@ class SearchBackend(ABC):
     layer maps them to HTTP status codes.
     """
 
-    def __init__(self, settings: ServiceSettings):
+    def __init__(
+        self,
+        settings: ServiceSettings,
+        *,
+        graph_id: str = DEFAULT_GRAPH_ID,
+        language: str | None = None,
+    ):
         """
         :param settings: Service settings, source of the request bounds every
             backend shares.
+        :param graph_id: Identifier of the graph this backend serves.
+        :param language: This graph's default answer language.
         """
         self.settings = settings
+        self.graph_id = graph_id
+        self.language = language or settings.language
         self._stats: GraphStats | None = None
 
     @property
@@ -315,6 +325,19 @@ class SearchBackend(ABC):
         if not changes:
             return params
         return replace(params, **changes)
+
+    def capabilities(self) -> dict[SearchMode, Capability | None]:
+        """
+        Which modes this graph can serve, and what each unservable one lacks.
+
+        The client has to know which modes to offer; without this it can only
+        try one and read the 409.
+
+        :return: Mode mapped to ``None`` when servable, or to the missing
+            capability.
+        """
+        stats = self._stats or GraphStats()
+        return {mode: stats.missing_for(mode) for mode in MODE_REQUIREMENTS}
 
     def require_batch_size(self, size: int) -> None:
         """

@@ -4,10 +4,36 @@ Service configuration.
 
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ragu.api.models import CAPABILITIES
+
+# Identifier of the graph served when none are configured explicitly.
+DEFAULT_GRAPH_ID = "default"
+
+
+class GraphSpec(BaseModel):
+    """
+    One graph this service serves.
+
+    :param id: Identifier used in the URL. Kept to a safe slug because it is a
+        path segment and selects a storage folder.
+    :param storage_folder: Folder holding the built graph.
+    :param language: Default answer language for this graph; falls back to the
+        service default.
+    :param settings_file: ``Settings`` JSON saved at build time. Applied while
+        the graph is constructed and rolled back afterwards.
+    :param embedder_dim: Embedding dimension the graph was built with.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+    storage_folder: str = Field(min_length=1)
+    language: str | None = None
+    settings_file: str | None = None
+    embedder_dim: int | None = None
 
 
 class ServiceSettings(BaseSettings):
@@ -18,6 +44,12 @@ class ServiceSettings(BaseSettings):
     backend: Literal["ragu", "stub"] = Field(
         default="ragu",
         description="'ragu' loads a real knowledge graph, 'stub' serves canned answers for local development",
+    )
+
+    graphs: list[GraphSpec] = Field(
+        default_factory=list,
+        description="Graphs to serve, as JSON. When empty, one graph named "
+        "'default' is built from RAGU_API_STORAGE_FOLDER / RAGU_API_LANGUAGE.",
     )
 
     host: str = Field(
@@ -84,6 +116,34 @@ class ServiceSettings(BaseSettings):
         description="Stub backend only: comma-separated capabilities to report as missing "
         "(entity_graph, community_summaries, vector_index)",
     )
+
+
+    @field_validator("graphs")
+    @classmethod
+    def _reject_duplicate_ids(cls, value: list[GraphSpec]) -> list[GraphSpec]:
+        seen = [spec.id for spec in value]
+        duplicates = sorted({name for name in seen if seen.count(name) > 1})
+        if duplicates:
+            raise ValueError(f"duplicate graph ids {duplicates}")
+        return value
+
+    def resolved_graphs(self) -> list[GraphSpec]:
+        """
+        The graphs to serve, including the single-graph fallback.
+
+        :return: One spec per graph, never empty.
+        """
+        if self.graphs:
+            return list(self.graphs)
+        return [
+            GraphSpec(
+                id=DEFAULT_GRAPH_ID,
+                storage_folder=self.storage_folder,
+                language=self.language,
+                settings_file=self.settings_file,
+                embedder_dim=self.embedder_dim,
+            )
+        ]
 
     @field_validator("stub_missing_capabilities")
     @classmethod

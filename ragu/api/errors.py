@@ -93,6 +93,15 @@ class CapabilityUnavailableError(RaguServiceError):
         return self._missing_capability
 
 
+class GraphNotFoundError(RaguServiceError):
+    """
+    No graph by that name is configured (404).
+    """
+
+    code = "GRAPH_NOT_FOUND"
+    status_code = 404
+
+
 class ServiceNotReadyError(RaguServiceError):
     """
     The graph is not loaded yet or the backend failed to start (503).

@@ -301,6 +301,42 @@ class GraphStatsResponse(BaseModel):
     )
 
 
+class ModeAvailability(BaseModel):
+    """
+    Whether one search mode can run against a graph, and why not when it cannot.
+
+    A client has to know which modes to offer before it offers them; without
+    this it can only try one and read the 409.
+    """
+
+    mode: SearchMode
+    available: bool
+    missing_capability: Capability | None = None
+    reason: str | None = Field(
+        default=None, description="What the graph would need, when the mode is off"
+    )
+
+
+class GraphInfo(BaseModel):
+    """
+    One graph in the catalogue.
+    """
+
+    id: str
+    loaded: bool
+    language: str = Field(description="Default answer language for this graph")
+    stats: GraphStatsResponse | None = None
+    modes: list[ModeAvailability] = Field(default_factory=list)
+    error: str | None = Field(
+        default=None, description="Why this graph is not loaded, when it is not"
+    )
+
+
+class GraphListResponse(BaseModel):
+    default: str = Field(description="Graph served by the paths that name none")
+    graphs: list[GraphInfo] = Field(default_factory=list)
+
+
 class HealthResponse(BaseModel):
     status: str = Field(description="'ok' when searches can be served, else 'degraded'")
     graph_loaded: bool

@@ -4,8 +4,9 @@ Adapter over the RAGU engines.
 
 import asyncio
 import os
-from collections.abc import AsyncIterator
-from typing import Any
+from collections.abc import AsyncIterator, Iterator
+from contextlib import contextmanager
+from typing import Any, get_type_hints
 
 from ragu import (
     CachedAsyncOpenAI,
@@ -27,7 +28,7 @@ from ragu.api.backends.base import (
     SearchCall,
     SearchOutcome,
 )
-from ragu.api.config import ServiceSettings
+from ragu.api.config import GraphSpec, ServiceSettings
 from ragu.api.errors import BackendExecutionError, ServiceNotReadyError
 from ragu.api.mapping import extract_sources, to_outcome
 from ragu.api.models import ChildEngineReport, EngineReport, SearchMode
@@ -40,6 +41,34 @@ from ragu.search_engine.local_search import LocalParams
 from ragu.search_engine.mix_search import MixQueryParams
 from ragu.search_engine.naive_search import NaiveSearchParams
 from ragu.search_engine.query_plan import QueryPlanEngine
+
+
+# The public, annotated fields of the settings singleton. Snapshotting them by
+# name keeps the isolation below out of GlobalSettings' internals.
+_SETTINGS_FIELDS = tuple(
+    name for name in get_type_hints(type(Settings)) if not name.startswith("_")
+)
+
+
+@contextmanager
+def isolated_settings() -> Iterator[None]:
+    """
+    Apply changes to the ``Settings`` singleton and roll them back afterwards.
+
+    ``Settings`` is process-global, so one graph's storage folder, language and
+    token limits would otherwise leak into the next graph constructed. Every
+    per-graph value is read inside the constructors that run in this block —
+    ``Index`` reads the storage folder, the embedder reads its token limit — so
+    restoring afterwards is enough.
+    """
+    snapshot = {name: getattr(Settings, name) for name in _SETTINGS_FIELDS}
+    storage_folder = Settings.storage_folder
+    try:
+        yield
+    finally:
+        for name, value in snapshot.items():
+            setattr(Settings, name, value)
+        Settings.storage_folder = storage_folder
 
 
 class RecordingEngine:
@@ -93,8 +122,17 @@ class RaguBackend(SearchBackend):
     Real backend: a loaded graph plus one engine per search mode.
     """
 
-    def __init__(self, settings: ServiceSettings):
-        super().__init__(settings)
+    def __init__(self, settings: ServiceSettings, spec: GraphSpec):
+        super().__init__(
+            settings, graph_id=spec.id, language=spec.language or settings.language
+        )
+        self.spec = spec
+        # Token limits and tokenizer names are read off the Settings singleton by
+        # the engine constructors. They are captured here, while this graph's
+        # settings are applied, and passed explicitly afterwards so an engine
+        # built lazily for another language does not pick up whatever the
+        # singleton holds by then.
+        self._engine_kwargs: dict[str, Any] = {}
         self.graph: KnowledgeGraph | None = None
         self._engines: dict[tuple[SearchMode, str], BaseEngine[Any, Any]] = {}
         self._clients: list[CachedAsyncOpenAI] = []
@@ -103,27 +141,16 @@ class RaguBackend(SearchBackend):
 
     async def startup(self) -> None:
         """
-        Load the graph and build one engine per search mode.
+        Load this graph and warm its default-language engines.
 
         :raises ServiceNotReadyError: If credentials, the embedder endpoint or
             the storage folder make the graph unusable.
         """
         settings = self.settings
+        spec = self.spec
 
-        self._require_storage_folder(settings.storage_folder)
-
-        if settings.settings_file:
-            Settings.load(settings.settings_file)
-        Settings.storage_folder = settings.storage_folder
-        Settings.language = settings.language
-
-        try:
-            env = Env.from_env()
-        except Exception as exc:
-            raise ServiceNotReadyError(
-                "LLM credentials are missing: set LLM_MODEL_NAME, LLM_BASE_URL and LLM_API_KEY "
-                f"in the environment or in .env ({exc})."
-            ) from exc
+        self._require_storage_folder(spec.storage_folder)
+        env = self._env()
 
         llm_client = CachedAsyncOpenAI(
             base_url=env.llm_base_url,
@@ -142,58 +169,83 @@ class RaguBackend(SearchBackend):
             )
             self._clients.append(embedder_client)
 
-        llm = LLMOpenAI(client=llm_client, model_name=env.llm_model_name)
-        embedder = EmbedderOpenAI(
-            client=embedder_client,
-            model_name=env.embedder_model_name or env.llm_model_name,
-            dim=settings.embedder_dim,
-        )
-        if settings.embedder_dim is None:
+        with isolated_settings():
+            if spec.settings_file:
+                Settings.load(spec.settings_file)
+            Settings.storage_folder = spec.storage_folder
+            Settings.language = self.language
+
+            llm = LLMOpenAI(client=llm_client, model_name=env.llm_model_name)
+            embedder = EmbedderOpenAI(
+                client=embedder_client,
+                model_name=env.embedder_model_name or env.llm_model_name,
+                dim=spec.embedder_dim,
+            )
+            if spec.embedder_dim is None:
+                try:
+                    await embedder.initialize()
+                except Exception as exc:
+                    raise ServiceNotReadyError(
+                        "Could not detect the embedding dimension: the embedder endpoint is "
+                        "unreachable. Set the graph's embedder_dim to the dimension it was "
+                        f"built with, or make the endpoint reachable ({exc})."
+                    ) from exc
+
             try:
-                await embedder.initialize()
+                # Constructing the graph opens every storage and reads the whole
+                # graph file, which takes minutes on a large corpus. Off the
+                # event loop, so /health keeps answering while it happens.
+                graph = await asyncio.to_thread(
+                    KnowledgeGraph, llm=llm, embedder=embedder, language=self.language
+                )
             except Exception as exc:
                 raise ServiceNotReadyError(
-                    "Could not detect the embedding dimension: the embedder endpoint is unreachable. "
-                    "Set RAGU_API_EMBEDDER_DIM to the dimension the graph was built with, "
-                    f"or make the endpoint reachable ({exc})."
+                    f"Failed to load graph '{spec.id}' from '{spec.storage_folder}': {exc}"
                 ) from exc
 
-        try:
-            # Constructing the graph opens every storage and reads the whole
-            # graph file, which takes minutes on a large corpus. Off the event
-            # loop, so /health keeps answering while it happens.
-            graph = await asyncio.to_thread(
-                KnowledgeGraph,
-                llm=llm,
-                embedder=embedder,
-                language=settings.language,
-            )
-        except Exception as exc:
-            raise ServiceNotReadyError(
-                f"Failed to load the graph from '{settings.storage_folder}': {exc}"
-            ) from exc
+            self._engine_kwargs = {
+                "max_context_length": Settings.llm_context_token_limit,
+                "tokenizer_backend": Settings.tokenizer_llm_backend,
+                "tokenizer_model": Settings.tokenizer_llm_name,
+            }
+            self.graph = graph
+            self._llm = llm
+            self._embedder = embedder
+            # Warm the default language so a misconfigured engine fails at
+            # startup rather than on the first request.
+            for mode in ("global", "local", "naive"):
+                self._leaf_engine(mode, self.language)
 
-        self.graph = graph
-        self._llm = llm
-        self._embedder = embedder
-        # Warm the default language so a misconfigured engine fails at startup
-        # rather than on the first request.
-        for mode in ("global", "local", "naive"):
-            self._leaf_engine(mode, settings.language)
         self._stats = await self._measure(graph)
 
         if self._stats.is_empty:
             raise ServiceNotReadyError(
-                f"The graph at '{settings.storage_folder}' is empty: no entities, chunks or "
-                "community summaries. Point RAGU_API_STORAGE_FOLDER at a built graph."
+                f"Graph '{spec.id}' at '{spec.storage_folder}' is empty: no entities, "
+                "chunks or community summaries."
             )
 
         logger.info(
-            "Graph loaded from '{}' (language={}): {}",
-            settings.storage_folder,
-            settings.language,
+            "Graph '{}' loaded from '{}' (language={}): {}",
+            spec.id,
+            spec.storage_folder,
+            self.language,
             self._stats,
         )
+
+    @staticmethod
+    def _env() -> Env:
+        """
+        Read the model credentials shared by every graph.
+
+        :raises ServiceNotReadyError: If they are missing.
+        """
+        try:
+            return Env.from_env()
+        except Exception as exc:
+            raise ServiceNotReadyError(
+                "LLM credentials are missing: set LLM_MODEL_NAME, LLM_BASE_URL and "
+                f"LLM_API_KEY in the environment or in .env ({exc})."
+            ) from exc
 
     async def shutdown(self) -> None:
         """
@@ -282,11 +334,18 @@ class RaguBackend(SearchBackend):
         graph, llm, embedder = self._require_loaded()
         if mode == "global":
             return GlobalSearchEngine(
-                llm=llm, knowledge_graph=graph, language=language
+                llm=llm,
+                knowledge_graph=graph,
+                language=language,
+                **self._engine_kwargs,
             )
         engine_cls = LocalSearchEngine if mode == "local" else NaiveSearchEngine
         return engine_cls(
-            llm=llm, knowledge_graph=graph, embedder=embedder, language=language
+            llm=llm,
+            knowledge_graph=graph,
+            embedder=embedder,
+            language=language,
+            **self._engine_kwargs,
         )
 
     def _leaf_engine(self, mode: SearchMode, language: str) -> BaseEngine[Any, Any]:
@@ -343,7 +402,7 @@ class RaguBackend(SearchBackend):
                 "Knowledge graph is not loaded yet.", mode=call.mode
             )
         self.require_capability(call.mode)
-        language = call.language or self.settings.language
+        language = call.language or self.language
 
         if call.mode != "mix":
             return self._leaf_engine(call.mode, language), ()

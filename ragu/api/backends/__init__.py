@@ -5,19 +5,20 @@ Search backends.
 from ragu.api.backends.base import GraphStats, SearchBackend, SearchOutcome
 from ragu.api.backends.ragu_backend import RaguBackend
 from ragu.api.backends.stub import StubBackend
-from ragu.api.config import ServiceSettings
+from ragu.api.config import GraphSpec, ServiceSettings
 
 
-def build_backend(settings: ServiceSettings) -> SearchBackend:
+def build_backend(settings: ServiceSettings, spec: GraphSpec) -> SearchBackend:
     """
-    Instantiate the backend selected by ``RAGU_API_BACKEND``.
+    Instantiate the backend selected by ``RAGU_API_BACKEND`` for one graph.
 
     :param settings: Service settings.
+    :param spec: The graph this backend serves.
     :return: The configured backend, not yet started.
     """
     if settings.backend == "stub":
-        return StubBackend(settings)
-    return RaguBackend(settings)
+        return StubBackend(settings, spec)
+    return RaguBackend(settings, spec)
 
 
 __all__ = [
