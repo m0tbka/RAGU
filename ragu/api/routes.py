@@ -8,7 +8,7 @@ any change in the service (see the spec, "Per-route policy").
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Header, Request, Response
 from fastapi.responses import StreamingResponse
 
 from ragu.api.backends.base import (
@@ -22,16 +22,22 @@ from ragu.api.backends.base import (
 from ragu.api.errors import (
     RETRY_AFTER_SECONDS,
     GraphNotFoundError,
+    InvalidRequestError,
+    JobNotFoundError,
     ServiceNotReadyError,
 )
+from ragu.api.jobs import Job, JobManager
 from ragu.api.models import (
     BatchSearchItem,
     BatchSearchResponse,
+    BuildRequest,
     EngineReport,
     ErrorBody,
     ErrorResponse,
     GraphInfo,
     GraphListResponse,
+    JobListResponse,
+    JobResponse,
     GlobalBatchRequest,
     GlobalRetrieveRequest,
     GlobalSearchRequest,
@@ -565,6 +571,110 @@ async def stream_mix(
     backend: SearchBackend = Depends(get_backend),
 ) -> Response:
     return await _stream("mix", payload, backend)
+
+
+JOB_RESPONSES = {
+    404: {"model": ErrorResponse, "description": "No such job or graph"},
+    400: {"model": ErrorResponse, "description": "Graph does not accept documents"},
+}
+
+
+def _job_response(job: Job) -> JobResponse:
+    return JobResponse(
+        id=job.id,
+        kind=job.kind,
+        graph_id=job.graph_id,
+        state=job.state,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+        error=job.error,
+        result=job.result,
+    )
+
+
+def _jobs(request: Request) -> JobManager:
+    """
+    The job manager, or a 503 before the lifespan has run.
+    """
+    manager = getattr(request.app.state, "jobs", None)
+    if manager is None:
+        raise ServiceNotReadyError("The service is still starting up.")
+    return manager
+
+
+@router.post(
+    "/v1/graphs/{graph_id}/documents",
+    response_model=JobResponse,
+    status_code=202,
+    responses=JOB_RESPONSES,
+)
+async def add_documents(
+    request: Request,
+    graph_id: str,
+    payload: BuildRequest,
+    response: Response,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> JobResponse:
+    """
+    Add documents to a graph, as a job.
+
+    Building takes minutes to hours, which no request can hold open, so this
+    answers 202 with a job to poll. Searches on this graph answer 409 while it
+    runs: the build writes into the stores they read.
+
+    Send ``Idempotency-Key`` so a retry does not build the same corpus twice.
+    """
+    registry = _registry(request)
+    backend = registry.backend(graph_id) if registry is not None else None
+    if backend is None:
+        known = ", ".join(registry.ids) if registry is not None else "none"
+        raise GraphNotFoundError(
+            f"No graph named '{graph_id}'. Configured graphs: {known or 'none'}."
+        )
+    if not backend.accepts_documents:
+        raise InvalidRequestError(
+            f"Graph '{graph_id}' does not accept documents. Enable ingestion in its "
+            "configuration to build it over HTTP."
+        )
+
+    documents = list(payload.documents)
+    job = await _jobs(request).submit(
+        "build",
+        graph_id,
+        lambda: backend.build(documents),
+        idempotency_key=idempotency_key,
+    )
+    response.headers["Location"] = f"/v1/jobs/{job.id}"
+    return _job_response(job)
+
+
+@router.get("/v1/jobs", response_model=JobListResponse)
+async def list_jobs(request: Request, graph_id: str | None = None) -> JobListResponse:
+    """
+    Every job this process knows about, newest first.
+    """
+    jobs = await _jobs(request).store.list(graph_id)
+    return JobListResponse(jobs=[_job_response(job) for job in jobs])
+
+
+@router.get("/v1/jobs/{job_id}", response_model=JobResponse, responses=JOB_RESPONSES)
+async def get_job(request: Request, job_id: str) -> JobResponse:
+    job = await _jobs(request).store.get(job_id)
+    if job is None:
+        raise JobNotFoundError(f"No job with id '{job_id}'.")
+    return _job_response(job)
+
+
+@router.delete("/v1/jobs/{job_id}", response_model=JobResponse, responses=JOB_RESPONSES)
+async def cancel_job(request: Request, job_id: str) -> JobResponse:
+    """
+    Ask a running job to stop. A finished job is returned unchanged.
+    """
+    job = await _jobs(request).cancel(job_id)
+    if job is None:
+        raise JobNotFoundError(f"No job with id '{job_id}'.")
+    return _job_response(job)
 
 
 # The catalogue path is canonical; the flat one is kept for clients written

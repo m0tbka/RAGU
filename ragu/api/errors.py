@@ -102,6 +102,32 @@ class GraphNotFoundError(RaguServiceError):
     status_code = 404
 
 
+class GraphBusyError(RaguServiceError):
+    """
+    The graph is being written to and cannot be searched right now (409).
+
+    ``build_from_docs`` writes into the same stores the search reads, and the
+    file-backed ones tolerate no concurrent access, so the write wins and the
+    read is told to come back.
+    """
+
+    code = "GRAPH_BUSY"
+    status_code = 409
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return {"Retry-After": str(RETRY_AFTER_SECONDS)}
+
+
+class JobNotFoundError(RaguServiceError):
+    """
+    No job by that id in this process (404).
+    """
+
+    code = "JOB_NOT_FOUND"
+    status_code = 404
+
+
 class ServiceNotReadyError(RaguServiceError):
     """
     The graph is not loaded yet or the backend failed to start (503).

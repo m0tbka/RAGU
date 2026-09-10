@@ -54,10 +54,14 @@ def configure_logging(level: str = "info") -> None:
     """
     Send stdlib log records to loguru and set the loguru sink's level.
 
+    Tracebacks lose their frame-value dump on the way: loguru's ``diagnose``
+    prints every local variable, which in this process means API keys and
+    request bodies in the log.
+
     :param level: Level name, e.g. ``"debug"`` (case-insensitive).
     :raises ValueError: If the level name is not known to loguru.
     """
-    set_level(level)
+    set_level(level, diagnose=False)
 
     numeric_level = logging.getLevelName(level.upper())
     logging.root.handlers = [InterceptHandler()]

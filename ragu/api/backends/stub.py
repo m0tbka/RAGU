@@ -6,6 +6,7 @@ be exercised end-to-end without building a knowledge graph.
 """
 
 from collections.abc import AsyncIterator
+from typing import Any
 
 from ragu.api.backends.base import (
     GraphStats,
@@ -58,7 +59,24 @@ class StubBackend(SearchBackend):
             graph_id=spec.id if spec else DEFAULT_GRAPH_ID,
             language=spec.language if spec else None,
         )
+        self._spec = spec
+        self._ingested = 0
         self._missing = self.settings.missing_capabilities()
+
+    @property
+    def accepts_documents(self) -> bool:
+        return bool(self._spec and self._spec.build.enabled)
+
+    async def build(self, documents: list[str]) -> dict[str, Any]:
+        if not self.accepts_documents:
+            return await super().build(documents)
+        async with self._write_lock:
+            self._building = True
+            try:
+                self._ingested += len(documents)
+            finally:
+                self._building = False
+        return {"documents": len(documents), "total": self._ingested}
 
     async def startup(self) -> None:
         self._stats = self._simulated_stats()
@@ -183,6 +201,7 @@ class StubBackend(SearchBackend):
         yield SearchStreamEvent("done", {"engines": report.model_dump()})
 
     async def search(self, call: SearchCall) -> list[SearchOutcome]:
+        self.require_idle()
         self.require_capability(call.mode)
         report = self._report(call, query_plan=call.use_query_plan)
         return [
@@ -196,6 +215,7 @@ class StubBackend(SearchBackend):
         ]
 
     async def retrieve(self, call: SearchCall) -> list[RetrieveOutcome]:
+        self.require_idle()
         self.require_capability(call.mode)
         report = self._report(call, query_plan=False)
         return [

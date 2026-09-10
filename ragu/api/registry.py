@@ -155,4 +155,4 @@ class GraphRegistry:
             try:
                 await backend.shutdown()
             except Exception:
-                logger.exception("Graph '{}' failed to shut down", graph_id)
+                logger.opt(exception=True).error("Graph '{}' failed to shut down", graph_id)

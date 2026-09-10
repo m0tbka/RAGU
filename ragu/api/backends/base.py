@@ -2,13 +2,18 @@
 Backend interface used by the API layer.
 """
 
+import asyncio
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from ragu.api.config import DEFAULT_GRAPH_ID, ServiceSettings
-from ragu.api.errors import CapabilityUnavailableError, InvalidRequestError
+from ragu.api.errors import (
+    CapabilityUnavailableError,
+    GraphBusyError,
+    InvalidRequestError,
+)
 from ragu.api.models import (
     Capability,
     EngineReport,
@@ -275,6 +280,10 @@ class SearchBackend(ABC):
         self.graph_id = graph_id
         self.language = language or settings.language
         self._stats: GraphStats | None = None
+        # build_from_docs writes into the stores search reads from, so the two
+        # are serialized rather than allowed to interleave.
+        self._write_lock = asyncio.Lock()
+        self._building = False
 
     @property
     def graph_loaded(self) -> bool:
@@ -327,6 +336,38 @@ class SearchBackend(ABC):
         if not changes:
             return params
         return replace(params, **changes)
+
+    @property
+    def accepts_documents(self) -> bool:
+        """
+        Whether this graph can be built from documents over HTTP.
+        """
+        return False
+
+    def require_idle(self) -> None:
+        """
+        Refuse a read while this graph is being written to.
+
+        :raises GraphBusyError: If a build is in progress.
+        """
+        if self._building:
+            raise GraphBusyError(
+                f"Graph '{self.graph_id}' is being built; searches are paused "
+                "until it finishes."
+            )
+
+    async def build(self, documents: list[str]) -> dict[str, Any]:
+        """
+        Add documents to this graph.
+
+        :param documents: Raw document texts.
+        :return: What the build produced, for the job result.
+        :raises InvalidRequestError: If this graph does not accept documents.
+        """
+        raise InvalidRequestError(
+            f"Graph '{self.graph_id}' does not accept documents. Enable ingestion "
+            "in its configuration to build it over HTTP."
+        )
 
     def capabilities(self) -> dict[SearchMode, Capability | None]:
         """

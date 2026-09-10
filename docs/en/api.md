@@ -5,12 +5,13 @@
 2. [Running the service](#running-the-service)
 3. [Configuration](#configuration)
 4. [The graph catalogue](#the-graph-catalogue)
-5. [Search endpoints](#search-endpoints)
-6. [Health and readiness](#health-and-readiness)
-7. [Errors](#errors)
-8. [Design decisions](#design-decisions)
-9. [Logging](#logging)
-10. [Current limits](#current-limits)
+5. [Ingestion](#ingestion)
+6. [Search endpoints](#search-endpoints)
+7. [Health and readiness](#health-and-readiness)
+8. [Errors](#errors)
+9. [Design decisions](#design-decisions)
+10. [Logging](#logging)
+11. [Current limits](#current-limits)
 
 ---
 
@@ -144,6 +145,44 @@ settings around the construction, and rolls the singleton back afterwards.
 Engines built later — one per language, on demand — would otherwise pick up
 whatever the singleton holds by then, so the backend captures the token limit
 and tokenizer at load time and passes them explicitly.
+
+## Ingestion
+
+Building a graph takes minutes to hours, which no request can hold open, so
+documents are submitted as a job and the job is polled.
+
+| Route | |
+|---|---|
+| `POST /v1/graphs/{id}/documents` | `202` with a job; `Location` points at it |
+| `GET /v1/jobs` | every job this process knows, newest first (`?graph_id=`) |
+| `GET /v1/jobs/{job_id}` | one job |
+| `DELETE /v1/jobs/{job_id}` | ask a running job to stop |
+
+Send `Idempotency-Key` so a client retry does not build the same corpus twice.
+
+**Searches on a graph answer `409 GRAPH_BUSY` while it is being built.**
+`build_from_docs` writes into the same stores the search reads, and the
+file-backed ones tolerate no concurrent access, so the write wins and the read
+is told to come back.
+
+Ingestion is off by default. A graph accepts documents only when its spec says
+so, because serving a prebuilt graph and building one are different workloads
+with different configuration:
+
+```json
+{"id": "corpus", "storage_folder": "/data/corpus",
+ "build": {"enabled": true, "chunker": "simple", "chunk_size": 1200,
+           "chunk_overlap": 100, "vector_only": false,
+           "make_community_summary": true}}
+```
+
+`vector_only` builds chunk vectors and skips entity extraction — the only mode
+that works without an extractor, and the one that leaves `local` and `global`
+unavailable.
+
+Jobs live in memory: one replica, and a restart loses what was running. The
+store is an interface so a shared one can replace it; that is deliberately not
+done yet.
 
 ## Search endpoints
 
@@ -342,6 +381,8 @@ All errors share one envelope:
 |---|---|---|
 | 400 | `INVALID_REQUEST` | empty `query`, bad field type, unknown field |
 | 404 | `GRAPH_NOT_FOUND` | the path names a graph that is not configured |
+| 404 | `JOB_NOT_FOUND` | no job with that id in this process |
+| 409 | `GRAPH_BUSY` | the graph is being built; carries `Retry-After` |
 | 409 | `CAPABILITY_UNAVAILABLE` | the graph cannot serve this mode, or this query found nothing |
 | 503 | `SERVICE_NOT_READY` | graph not loaded, or startup failed; carries `Retry-After` |
 | 500 | `INTERNAL_ERROR` | LLM unavailable, embedder timeout, engine failure |
@@ -403,8 +444,7 @@ yourself if you want the same behaviour.
 
 Known gaps, listed so they are not mistaken for oversights:
 
-- **No ingestion over HTTP.** The service cannot build or extend a graph;
-  `build_from_docs` and the graph CRUD surface of `KnowledgeGraph` are not
-  exposed.
+- **No graph CRUD.** Entities, relations, chunks and communities cannot be
+  read or edited over HTTP.
 - **No authentication, quotas or metrics.** Every request costs LLM calls;
   put the service behind a gateway that authenticates and rate-limits it.

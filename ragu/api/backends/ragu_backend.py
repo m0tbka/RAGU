@@ -9,6 +9,8 @@ from contextlib import contextmanager
 from typing import Any, get_type_hints
 
 from ragu import (
+    ArtifactsExtractorLLM,
+    BuilderArguments,
     CachedAsyncOpenAI,
     EmbedderOpenAI,
     Env,
@@ -19,6 +21,7 @@ from ragu import (
     MixSearchEngine,
     NaiveSearchEngine,
     Settings,
+    SimpleChunker,
 )
 from ragu.api.backends.base import (
     GraphStats,
@@ -212,7 +215,11 @@ class RaguBackend(SearchBackend):
                 # graph file, which takes minutes on a large corpus. Off the
                 # event loop, so /health keeps answering while it happens.
                 graph = await asyncio.to_thread(
-                    KnowledgeGraph, llm=llm, embedder=embedder, language=self.language
+                    KnowledgeGraph,
+                    llm=llm,
+                    embedder=embedder,
+                    language=self.language,
+                    **self._pipeline(llm, embedder),
                 )
             except Exception as exc:
                 raise ServiceNotReadyError(
@@ -248,6 +255,82 @@ class RaguBackend(SearchBackend):
             self._stats,
         )
 
+    def _pipeline(self, llm: LLM, embedder: Embedder) -> dict[str, Any]:
+        """
+        The chunker, extractor and builder settings this graph is built with.
+
+        A graph that only serves gets none of them: constructing an extractor
+        costs nothing at rest, but it is configuration the deployment has not
+        asked for.
+
+        :param llm: LLM the extractor uses.
+        :param embedder: Embedder the extractor may use for ICL examples.
+        :return: Keyword arguments for ``KnowledgeGraph``.
+        """
+        build = self.spec.build
+        if not build.enabled:
+            return {}
+
+        chunker = (
+            SimpleChunker(
+                max_chunk_size=build.chunk_size, overlap=build.chunk_overlap
+            )
+            if build.chunker == "simple"
+            else None
+        )
+        extractor = (
+            None if build.vector_only else ArtifactsExtractorLLM(llm, embedder=embedder)
+        )
+        return {
+            "chunker": chunker,
+            "artifact_extractor": extractor,
+            "builder_settings": BuilderArguments(
+                build_only_vector_context=build.vector_only,
+                make_community_summary=build.make_community_summary,
+            ),
+        }
+
+    @property
+    def accepts_documents(self) -> bool:
+        return self.spec.build.enabled
+
+    async def build(self, documents: list[str]) -> dict[str, Any]:
+        """
+        Add documents to this graph and re-measure it.
+
+        Searches on this graph are refused while the build runs: it writes into
+        the same stores they read, and the file-backed ones tolerate no
+        concurrent access.
+
+        :param documents: Raw document texts.
+        :return: The graph sizes after the build.
+        :raises InvalidRequestError: If this graph does not accept documents.
+        """
+        if not self.accepts_documents:
+            return await super().build(documents)
+
+        graph, _, _ = self._require_loaded()
+        async with self._write_lock:
+            self._building = True
+            try:
+                with isolated_settings():
+                    if self.spec.settings_file:
+                        Settings.load(self.spec.settings_file)
+                    Settings.storage_folder = self.spec.storage_folder
+                    Settings.language = self.language
+                    await graph.build_from_docs(documents)
+                self._stats = await self._measure(graph)
+            finally:
+                self._building = False
+
+        logger.info(
+            "Graph '{}' rebuilt from {} document(s): {}",
+            self.graph_id,
+            len(documents),
+            self._stats,
+        )
+        return {"documents": len(documents), "stats": self._stats.to_response().model_dump()}
+
     @staticmethod
     def _env() -> Env:
         """
@@ -275,12 +358,12 @@ class RaguBackend(SearchBackend):
             try:
                 await self.graph.index.close()
             except Exception:
-                logger.exception("Failed to close the graph index")
+                logger.opt(exception=True).error("Failed to close the graph index")
         for client in self._clients:
             try:
                 await client.client.close()
             except Exception:
-                logger.exception("Failed to close a model client")
+                logger.opt(exception=True).error("Failed to close a model client")
         self._clients.clear()
         self.graph = None
         self._llm = None
@@ -423,6 +506,7 @@ class RaguBackend(SearchBackend):
             raise ServiceNotReadyError(
                 "Knowledge graph is not loaded yet.", mode=call.mode
             )
+        self.require_idle()
         self.require_capability(call.mode)
         language = call.language or self.language
 
@@ -500,7 +584,7 @@ class RaguBackend(SearchBackend):
                 if event.delta:
                     yield SearchStreamEvent("delta", {"text": event.delta})
         except Exception as exc:
-            logger.exception("RAGU {} stream failed", call.mode)
+            logger.opt(exception=True).error("RAGU {} stream failed", call.mode)
             yield SearchStreamEvent(
                 "error",
                 {"code": "INTERNAL_ERROR", "message": f"The {call.mode} search engine failed."},
@@ -526,7 +610,7 @@ class RaguBackend(SearchBackend):
                 engine = QueryPlanEngine(engine)
             responses = await engine.batch_query(list(call.queries), params)
         except Exception as exc:
-            logger.exception("RAGU {} search failed", call.mode)
+            logger.opt(exception=True).error("RAGU {} search failed", call.mode)
             raise BackendExecutionError(mode=call.mode, detail=str(exc)) from exc
 
         report = self._report(
@@ -557,7 +641,7 @@ class RaguBackend(SearchBackend):
             # happen.
             retrievals = await engine.batch_search(list(call.queries), params)
         except Exception as exc:
-            logger.exception("RAGU {} retrieval failed", call.mode)
+            logger.opt(exception=True).error("RAGU {} retrieval failed", call.mode)
             raise BackendExecutionError(mode=call.mode, detail=str(exc)) from exc
 
         report = self._report(call, type(engine).__name__, children, query_plan=False)

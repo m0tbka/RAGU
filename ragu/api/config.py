@@ -13,6 +13,35 @@ from ragu.api.models import CAPABILITIES
 DEFAULT_GRAPH_ID = "default"
 
 
+class BuildSpec(BaseModel):
+    """
+    How documents become graph, for the graphs that accept documents.
+
+    Ingestion is off by default: the service's original job is to serve a
+    prebuilt graph, and building one is a different, far more expensive
+    workload with its own configuration.
+
+    :param enabled: Whether this graph accepts documents at all.
+    :param chunker: How to split documents; ``None`` treats each document as
+        one chunk.
+    :param chunk_size: Maximum chunk size in characters.
+    :param chunk_overlap: Overlap between consecutive chunks, in characters.
+    :param vector_only: Build chunk vectors only, skipping entity extraction.
+        The only mode that works without an extractor.
+    :param make_community_summary: Summarize detected communities, which is
+        what global search reads.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    chunker: Literal["simple"] | None = "simple"
+    chunk_size: int = Field(default=1200, gt=0)
+    chunk_overlap: int = Field(default=100, ge=0)
+    vector_only: bool = False
+    make_community_summary: bool = True
+
+
 class GraphSpec(BaseModel):
     """
     One graph this service serves.
@@ -34,6 +63,7 @@ class GraphSpec(BaseModel):
     language: str | None = None
     settings_file: str | None = None
     embedder_dim: int | None = None
+    build: BuildSpec = Field(default_factory=BuildSpec)
 
 
 class ServiceSettings(BaseSettings):

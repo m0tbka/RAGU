@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from ragu.api.backends.base import SearchBackend
+from ragu.api.jobs import JobManager
 from ragu.api.registry import GraphRegistry
 from ragu.api.config import ServiceSettings
 from ragu.api.errors import InvalidRequestError, RaguServiceError
@@ -50,6 +51,7 @@ def create_app(
             else GraphRegistry(settings, reranker=reranker)
         )
         app.state.registry = registry
+        app.state.jobs = JobManager()
         try:
             await registry.startup()
         except Exception as exc:
@@ -59,6 +61,7 @@ def create_app(
             app.state.startup_error = str(exc)
             logger.opt(exception=True).error("Registry startup failed: {}", exc)
         yield
+        await app.state.jobs.shutdown()
         await registry.shutdown()
 
     app = FastAPI(
@@ -93,7 +96,7 @@ def create_app(
 
     @app.exception_handler(Exception)
     async def _unhandled_error_handler(_: Request, exc: Exception) -> JSONResponse:
-        logger.exception("Unhandled service error")
+        logger.opt(exception=True).error("Unhandled service error")
         error = RaguServiceError(UNHANDLED_ERROR_MESSAGE)
         return JSONResponse(status_code=error.status_code, content=error.to_envelope())
 
