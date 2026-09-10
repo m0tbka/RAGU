@@ -5,8 +5,10 @@ Each of these is here rather than in a route because it has to apply to every
 route, including the ones added next.
 """
 
+import asyncio
 import time
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -15,7 +17,11 @@ from starlette.responses import Response
 
 from ragu.api.auth import authorize
 from ragu.api.config import ServiceSettings
-from ragu.api.errors import PayloadTooLargeError, RaguServiceError
+from ragu.api.errors import (
+    PayloadTooLargeError,
+    RaguServiceError,
+    TooManyRequestsError,
+)
 from ragu.api.metrics import DURATION, REQUESTS, metrics
 from ragu.api.request_context import (
     REQUEST_ID_HEADER,
@@ -159,3 +165,38 @@ class MetricsMiddleware(BaseHTTPMiddleware):
                 (("method", request.method), ("path", path), ("status", status)),
             )
             metrics.observe(DURATION, elapsed, (("path", path),))
+
+
+class Admission:
+    """
+    A ceiling on how many generations run at once.
+
+    Without one, every accepted request fans straight out to the LLM and the
+    provider's rate limit becomes the queue — with the queue held open inside
+    this process, holding memory and a socket per waiting request. Refusing at
+    the door is cheaper for everyone.
+    """
+
+    def __init__(self, limit: int | None):
+        self._semaphore = asyncio.Semaphore(limit) if limit else None
+
+    @asynccontextmanager
+    async def slot(self):
+        """
+        Hold a generation slot for the duration of the block.
+
+        :raises TooManyRequestsError: If none is free.
+        """
+        if self._semaphore is None:
+            yield
+            return
+        if self._semaphore.locked():
+            raise TooManyRequestsError(
+                "The service is already running as many generations as it will. "
+                "Retry shortly."
+            )
+        await self._semaphore.acquire()
+        try:
+            yield
+        finally:
+            self._semaphore.release()

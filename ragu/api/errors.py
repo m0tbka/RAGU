@@ -130,6 +130,28 @@ class RequestTimeoutError(RaguServiceError):
         return {"Retry-After": str(RETRY_AFTER_SECONDS)}
 
 
+class BudgetExceededError(RaguServiceError):
+    """
+    The request spent its allowance of LLM calls or tokens (429).
+    """
+
+    code = "BUDGET_EXCEEDED"
+    status_code = 429
+
+
+class TooManyRequestsError(RaguServiceError):
+    """
+    The service is already running as many generations as it will (429).
+    """
+
+    code = "TOO_MANY_REQUESTS"
+    status_code = 429
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return {"Retry-After": "5"}
+
+
 class GraphNotFoundError(RaguServiceError):
     """
     No graph by that name is configured (404).

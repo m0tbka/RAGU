@@ -67,6 +67,9 @@ Service settings are `RAGU_API_*` environment variables, read by
 | Variable | Default | Meaning |
 |---|---|---|
 | `RAGU_API_GRAPHS` | — | Graphs to serve, as a JSON list. Unset means one graph from the flat variables |
+| `RAGU_API_MAX_LLM_CALLS_PER_REQUEST` | — | LLM calls one request may make |
+| `RAGU_API_MAX_TOKENS_PER_REQUEST` | — | Approximate tokens one request may spend |
+| `RAGU_API_MAX_CONCURRENT_GENERATIONS` | — | Generations that may run at once |
 | `RAGU_API_API_KEYS` | — | Comma-separated API keys; empty leaves the service open |
 | `RAGU_API_CORS_ORIGINS` | — | Comma-separated browser origins |
 | `RAGU_API_MAX_BODY_BYTES` | `33554432` | Largest request body read |
@@ -375,6 +378,35 @@ whether the answer was degraded, and gauges for graphs and jobs.
 Labels use the route template, so a graph id or a job id cannot open a time
 series of its own.
 
+### Cost and budgets
+
+Every response carries `usage`: LLM calls and token counts, broken down by the
+stage that spent them — the engines already label their calls (`QueryPlan
+decompose`, `GlobalSearch batch meta-eval`, `NaiveSearch batch query`), and
+those labels are the breakdown.
+
+```json
+{"estimated": true, "calls": 7, "prompt_tokens": 4210, "completion_tokens": 380,
+ "total_tokens": 4590,
+ "stages": {"QueryPlan decompose": {"calls": 1, "prompt_tokens": 210, "completion_tokens": 60},
+            "NaiveSearch batch query": {"calls": 6, "prompt_tokens": 4000, "completion_tokens": 320}}}
+```
+
+`estimated` is always true and means it: the LLM clients return the parsed
+answer, not the raw response, so provider `usage` never reaches this layer.
+Counts are measured with the tokenizer — close enough to price a request and to
+stop a runaway one, not close enough to bill from.
+
+| Variable | Default | |
+|---|---|---|
+| `RAGU_API_MAX_LLM_CALLS_PER_REQUEST` | — | Over it, `429 BUDGET_EXCEEDED` |
+| `RAGU_API_MAX_TOKENS_PER_REQUEST` | — | Over it, `429 BUDGET_EXCEEDED` |
+| `RAGU_API_MAX_CONCURRENT_GENERATIONS` | — | Beyond it, `429 TOO_MANY_REQUESTS` |
+
+Refusing at the door is deliberate. Without a ceiling every accepted request
+fans straight out to the LLM and the provider's rate limit becomes the queue —
+held open inside this process, one socket and one buffer per waiting request.
+
 ### Bounds
 
 | Variable | Default | |
@@ -422,6 +454,8 @@ All errors share one envelope:
 |---|---|---|
 | 400 | `INVALID_REQUEST` | empty `query`, bad field type, unknown field |
 | 401 | `UNAUTHORIZED` | no accepted API key was presented |
+| 429 | `BUDGET_EXCEEDED` | the request spent its allowance of calls or tokens |
+| 429 | `TOO_MANY_REQUESTS` | the service is already at its generation ceiling |
 | 413 | `PAYLOAD_TOO_LARGE` | the request body exceeds the limit |
 | 504 | `REQUEST_TIMEOUT` | the request outlived RAGU_API_REQUEST_TIMEOUT |
 | 404 | `GRAPH_NOT_FOUND` | the path names a graph that is not configured |
@@ -490,5 +524,3 @@ Known gaps, listed so they are not mistaken for oversights:
 
 - **No graph CRUD.** Entities, relations, chunks and communities cannot be
   read or edited over HTTP.
-- **No per-request budgets or admission control.** A key gets in; nothing yet
-  caps what one request may spend or how many may run at once.

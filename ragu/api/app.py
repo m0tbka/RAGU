@@ -14,6 +14,7 @@ from ragu.api.backends.base import SearchBackend
 from ragu.api.errors import RequestTimeoutError
 from ragu.api.jobs import JobManager
 from ragu.api.middleware import (
+    Admission,
     AuthMiddleware,
     BodyLimitMiddleware,
     MetricsMiddleware,
@@ -62,6 +63,7 @@ def create_app(
         )
         app.state.registry = registry
         app.state.jobs = JobManager()
+        app.state.admission = Admission(settings.max_concurrent_generations)
         if not settings.api_keys_set():
             logger.warning(
                 "No RAGU_API_API_KEYS configured: this service is open to anyone "

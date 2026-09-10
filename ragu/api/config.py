@@ -122,6 +122,24 @@ class ServiceSettings(BaseSettings):
         description="Upper bound applied to a client-supplied top_k / rerank_top_k; "
         "requests above it are clamped",
     )
+    max_llm_calls_per_request: int | None = Field(
+        default=None,
+        gt=0,
+        description="LLM calls one request may make. Global search costs one per "
+        "surviving community, so this is the cap on a single expensive question.",
+    )
+    max_tokens_per_request: int | None = Field(
+        default=None,
+        gt=0,
+        description="Approximate tokens one request may spend; counted with the "
+        "tokenizer, since the clients do not surface provider usage.",
+    )
+    max_concurrent_generations: int | None = Field(
+        default=None,
+        gt=0,
+        description="Generations that may run at once. Beyond it requests answer "
+        "429 instead of fanning out to the LLM.",
+    )
     api_keys: str = Field(
         default="",
         description="Comma-separated API keys. Empty leaves the service open, "

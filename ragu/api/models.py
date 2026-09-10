@@ -150,6 +150,35 @@ class EngineReport(BaseModel):
     )
 
 
+class StageUsageModel(BaseModel):
+    """
+    What one stage of a request cost.
+    """
+
+    calls: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+
+
+class UsageModel(BaseModel):
+    """
+    What a request cost, by stage.
+
+    Token counts are measured with the tokenizer rather than read from the
+    provider — the LLM clients return the parsed answer, not the raw response —
+    so they are close, not exact. Price from your provider's bill, not from here.
+    """
+
+    estimated: bool = Field(
+        default=True, description="Token counts are measured locally, not billed"
+    )
+    calls: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    stages: dict[str, StageUsageModel] = Field(default_factory=dict)
+
+
 class SourceItem(BaseModel):
     id: str = Field(
         description="Stable source identifier, e.g. chunk_42 or community_3"
@@ -177,6 +206,9 @@ class SearchResponse(BaseModel):
     subqueries: list[SubqueryItem] = Field(default_factory=list)
     engines: EngineReport = Field(
         description="What actually ran, including child-engine failures"
+    )
+    usage: UsageModel | None = Field(
+        default=None, description="What this request cost, by stage"
     )
 
 
@@ -231,6 +263,9 @@ class RetrieveResponse(BaseModel):
     sources: list[SourceItem] = Field(default_factory=list)
     engines: EngineReport = Field(
         description="What actually ran, including child-engine failures"
+    )
+    usage: UsageModel | None = Field(
+        default=None, description="What this request cost, by stage"
     )
 
 
@@ -299,6 +334,9 @@ class BatchSearchResponse(BaseModel):
     used_query_plan: bool
     engines: EngineReport
     results: list[BatchSearchItem]
+    usage: UsageModel | None = Field(
+        default=None, description="What the whole batch cost, by stage"
+    )
 
 
 class ErrorBody(BaseModel):

@@ -28,6 +28,8 @@ from ragu.api.errors import (
 )
 from ragu.api.jobs import Job, JobManager
 from ragu.api.metrics import GRAPHS, JOBS, SEARCHES, metrics
+from ragu.api.middleware import Admission
+from ragu.api import usage
 from ragu.api.models import (
     BatchSearchItem,
     BatchSearchResponse,
@@ -56,14 +58,32 @@ from ragu.api.models import (
     RetrieveResponse,
     SearchMode,
     SearchResponse,
+    StageUsageModel,
+    UsageModel,
 )
+
+async def generation_slot(request: Request):
+    """
+    Open cost accounting and hold a generation slot for one request.
+
+    Attached to the whole search router rather than to each of its sixteen
+    routes, so a route added later cannot forget it.
+
+    Note that a streamed response is produced after the handler returns, so its
+    slot is released before the last token is sent; admission bounds the
+    retrieval and the first generation, not the tail of a stream.
+    """
+    _begin_usage(request)
+    async with _admission(request).slot():
+        yield
+
 
 router = APIRouter()
 
 # Mounted under both /v1/graphs/{graph_id} and /v1: the graph is read from the
 # path when it is there and falls back to the default when it is not, so the
 # flat paths that predate the catalogue keep working.
-search_router = APIRouter()
+search_router = APIRouter(dependencies=[Depends(generation_slot)])
 
 
 SEARCH_RESPONSES = {
@@ -102,10 +122,53 @@ def _response(call: SearchCall, outcome: SearchOutcome) -> SearchResponse:
         answer=outcome.answer,
         sources=outcome.sources,
         subqueries=outcome.subqueries,
+        usage=_usage_model(),
         engines=outcome.engines
         or EngineReport(
             requested=call.mode, used="unknown", query_plan=call.use_query_plan
         ),
+    )
+
+
+def _admission(request: Request) -> Admission:
+    """
+    The service's generation ceiling.
+    """
+    admission = getattr(request.app.state, "admission", None)
+    return admission if admission is not None else Admission(None)
+
+
+def _begin_usage(request: Request) -> None:
+    """
+    Start cost accounting for this request, with the service's budget.
+    """
+    settings = getattr(request.app.state, "settings", None)
+    usage.start(
+        max_calls=getattr(settings, "max_llm_calls_per_request", None),
+        max_tokens=getattr(settings, "max_tokens_per_request", None),
+    )
+
+
+def _usage_model() -> UsageModel | None:
+    """
+    Render what this request has cost so far.
+    """
+    record = usage.current()
+    if record is None:
+        return None
+    return UsageModel(
+        calls=record.calls,
+        prompt_tokens=record.prompt_tokens,
+        completion_tokens=record.completion_tokens,
+        total_tokens=record.total_tokens,
+        stages={
+            name: StageUsageModel(
+                calls=stage.calls,
+                prompt_tokens=stage.prompt_tokens,
+                completion_tokens=stage.completion_tokens,
+            )
+            for name, stage in record.stages.items()
+        },
     )
 
 
@@ -262,6 +325,7 @@ def _retrieved(call: SearchCall, outcome: RetrieveOutcome) -> RetrieveResponse:
         query=call.query,
         mode=call.mode,
         sources=outcome.sources,
+        usage=_usage_model(),
         engines=outcome.engines or EngineReport(requested=call.mode, used="unknown"),
     )
 
@@ -454,6 +518,7 @@ async def _batched(
     engines = outcomes[0].engines if outcomes else None
     return BatchSearchResponse(
         mode=mode,
+        usage=_usage_model(),
         used_query_plan=call.use_query_plan,
         engines=engines or EngineReport(requested=mode, used="unknown"),
         results=results,

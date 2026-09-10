@@ -2197,3 +2197,164 @@ class TestMetrics:
         assert len(series.buckets) == len(
             __import__("ragu.api.metrics", fromlist=["DURATION_BUCKETS"]).DURATION_BUCKETS
         )
+
+
+class TestUsageAccounting:
+    """The client prices the request; the operator caps it. Same numbers."""
+
+    def test_every_search_reports_usage(self):
+        with build_client() as client:
+            body = client.post("/v1/search/naive", json={"query": "q"}).json()
+        assert body["usage"] is not None
+        assert body["usage"]["estimated"] is True
+        assert body["usage"]["calls"] == 0  # the stub calls no LLM
+
+    def test_retrieve_and_batch_report_it_too(self):
+        with build_client() as client:
+            retrieve = client.post(
+                "/v1/search/naive/retrieve", json={"query": "q"}
+            ).json()
+            batch = client.post(
+                "/v1/search/naive/batch", json={"queries": ["a"]}
+            ).json()
+        assert retrieve["usage"] is not None
+        assert batch["usage"] is not None
+
+    async def test_calls_are_attributed_to_the_stage_that_made_them(self):
+        from ragu.api import usage
+        from ragu.api.usage import CountingLLM
+
+        class Encoder:
+            def encode(self, text):
+                return text.split()
+
+        class FakeLLM:
+            async def chat_completion(self, conversation, *args, **kwargs):
+                return "one two three"
+
+            async def batch_chat_completion(self, conversations, *args, **kwargs):
+                return ["one two"] * len(conversations)
+
+        counted = CountingLLM(FakeLLM(), encoder=Encoder())
+        record = usage.start()
+
+        await counted.batch_chat_completion(
+            [[{"role": "user", "content": "a b c d"}]] * 2,
+            desc="QueryPlan decompose",
+        )
+        await counted.batch_chat_completion(
+            [[{"role": "user", "content": "e f"}]],
+            desc="NaiveSearch batch query",
+        )
+
+        assert record.calls == 3
+        assert record.stages["QueryPlan decompose"].calls == 2
+        assert record.stages["QueryPlan decompose"].prompt_tokens == 8
+        assert record.stages["NaiveSearch batch query"].calls == 1
+        assert record.total_tokens == record.prompt_tokens + record.completion_tokens
+
+    async def test_a_call_budget_stops_a_runaway_request(self):
+        from ragu.api import usage
+        from ragu.api.errors import BudgetExceededError
+        from ragu.api.usage import CountingLLM
+
+        class FakeLLM:
+            async def batch_chat_completion(self, conversations, *args, **kwargs):
+                return [""] * len(conversations)
+
+        counted = CountingLLM(FakeLLM())
+        usage.start(max_calls=3)
+
+        await counted.batch_chat_completion([[]] * 2, desc="GlobalSearch batch meta-eval")
+        with pytest.raises(BudgetExceededError) as failure:
+            await counted.batch_chat_completion(
+                [[]] * 2, desc="GlobalSearch batch meta-eval"
+            )
+
+        assert failure.value.status_code == 429
+        assert "min_cluster_size" in failure.value.message
+
+    async def test_a_token_budget_stops_one_too(self):
+        from ragu.api import usage
+        from ragu.api.errors import BudgetExceededError
+        from ragu.api.usage import CountingLLM
+
+        class Encoder:
+            def encode(self, text):
+                return text.split()
+
+        class FakeLLM:
+            async def batch_chat_completion(self, conversations, *args, **kwargs):
+                return ["a b c d e"] * len(conversations)
+
+        counted = CountingLLM(FakeLLM(), encoder=Encoder())
+        usage.start(max_tokens=4)
+
+        with pytest.raises(BudgetExceededError):
+            await counted.batch_chat_completion([[]], desc="stage")
+
+    async def test_a_budget_refusal_is_not_flattened_into_a_500(self):
+        # _query wraps engine failures as BackendExecutionError; a service error
+        # already carries its own status and must pass through.
+        from ragu.api.errors import BudgetExceededError
+
+        backend, engines = TestEngineInvocation().build_backend()
+
+        class BudgetedEngine:
+            llm = object()
+
+            async def batch_query(self, queries, params=None):
+                raise BudgetExceededError("out of budget")
+
+        backend._engines[("naive", backend.language, False)] = BudgetedEngine()
+
+        with pytest.raises(BudgetExceededError):
+            await backend.search(SearchCall(mode="naive", queries=("q",)))
+
+
+class TestAdmissionControl:
+    """Refusing at the door is cheaper than queueing inside the process."""
+
+    async def test_a_full_service_refuses_rather_than_queues(self):
+        import asyncio
+
+        from ragu.api.errors import TooManyRequestsError
+        from ragu.api.middleware import Admission
+
+        admission = Admission(1)
+        held = asyncio.Event()
+        release = asyncio.Event()
+
+        async def occupy():
+            async with admission.slot():
+                held.set()
+                await release.wait()
+
+        task = asyncio.create_task(occupy())
+        await held.wait()
+
+        with pytest.raises(TooManyRequestsError) as failure:
+            async with admission.slot():
+                pass
+        assert failure.value.status_code == 429
+        assert failure.value.headers["Retry-After"] == "5"
+
+        release.set()
+        await task
+
+    async def test_the_slot_is_released_afterwards(self):
+        from ragu.api.middleware import Admission
+
+        admission = Admission(1)
+        async with admission.slot():
+            pass
+        async with admission.slot():
+            pass
+
+    async def test_no_limit_configured_admits_everything(self):
+        from ragu.api.middleware import Admission
+
+        admission = Admission(None)
+        async with admission.slot():
+            async with admission.slot():
+                pass

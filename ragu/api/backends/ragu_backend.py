@@ -32,9 +32,14 @@ from ragu.api.backends.base import (
     SearchOutcome,
 )
 from ragu.api.config import GraphSpec, ServiceSettings
-from ragu.api.errors import BackendExecutionError, ServiceNotReadyError
+from ragu.api.errors import (
+    BackendExecutionError,
+    RaguServiceError,
+    ServiceNotReadyError,
+)
 from ragu.api.mapping import extract_sources, to_outcome
 from ragu.api.reranking import ForgivingScorer, rerank_failure, reset_rerank_report
+from ragu.api.usage import CountingLLM
 from ragu.api.models import ChildEngineReport, EngineReport, SearchMode
 from ragu.common.logger import logger
 from ragu.models.embedder import Embedder
@@ -53,6 +58,21 @@ from ragu.search_engine.query_plan import QueryPlanEngine
 _SETTINGS_FIELDS = tuple(
     name for name in get_type_hints(type(Settings)) if not name.startswith("_")
 )
+
+
+def _encoder():
+    """
+    The tokenizer used to size prompts and answers, or ``None`` if unavailable.
+
+    Counting is a convenience, not a contract, so a missing tokenizer costs the
+    numbers rather than the request.
+    """
+    try:
+        import tiktoken
+
+        return tiktoken.encoding_for_model(Settings.tokenizer_llm_name)
+    except Exception:
+        return None
 
 
 @contextmanager
@@ -194,7 +214,13 @@ class RaguBackend(SearchBackend):
             Settings.storage_folder = spec.storage_folder
             Settings.language = self.language
 
-            llm = LLMOpenAI(client=llm_client, model_name=env.llm_model_name)
+            # Wrapped once, here: every engine takes this object, so every
+            # call they make is accounted for without threading a counter
+            # through the engines.
+            llm = CountingLLM(
+                LLMOpenAI(client=llm_client, model_name=env.llm_model_name),
+                encoder=_encoder(),
+            )
             embedder = EmbedderOpenAI(
                 client=embedder_client,
                 model_name=env.embedder_model_name or env.llm_model_name,
@@ -609,6 +635,9 @@ class RaguBackend(SearchBackend):
             if call.use_query_plan:
                 engine = QueryPlanEngine(engine)
             responses = await engine.batch_query(list(call.queries), params)
+        except RaguServiceError:
+            # A budget or capability refusal already carries its own status.
+            raise
         except Exception as exc:
             logger.opt(exception=True).error("RAGU {} search failed", call.mode)
             raise BackendExecutionError(mode=call.mode, detail=str(exc)) from exc
@@ -640,6 +669,8 @@ class RaguBackend(SearchBackend):
             # wrapped engine, so wrapping would only imply planning that does not
             # happen.
             retrievals = await engine.batch_search(list(call.queries), params)
+        except RaguServiceError:
+            raise
         except Exception as exc:
             logger.opt(exception=True).error("RAGU {} retrieval failed", call.mode)
             raise BackendExecutionError(mode=call.mode, detail=str(exc)) from exc
