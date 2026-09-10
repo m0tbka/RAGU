@@ -227,6 +227,7 @@ def _call(mode: SearchMode, payload: Any) -> SearchCall:
         naive_params=getattr(payload, "naive_params", None),
         use_query_plan=getattr(payload, "use_query_plan", False),
         language=getattr(payload, "language", None),
+        rerank=getattr(payload, "rerank", True),
     )
 
 
@@ -402,6 +403,7 @@ def _batch_call(mode: SearchMode, payload: Any) -> SearchCall:
         naive_params=getattr(payload, "naive_params", None),
         use_query_plan=getattr(payload, "use_query_plan", False),
         language=getattr(payload, "language", None),
+        rerank=getattr(payload, "rerank", True),
     )
 
 

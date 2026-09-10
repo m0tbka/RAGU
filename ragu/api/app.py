@@ -13,6 +13,7 @@ from ragu.api.registry import GraphRegistry
 from ragu.api.config import ServiceSettings
 from ragu.api.errors import InvalidRequestError, RaguServiceError
 from ragu.api.routes import router
+from ragu.models.scorer import Scorer
 from ragu.common.logger import logger
 
 # Returned instead of the exception text: engine and LLM-client errors routinely
@@ -25,6 +26,7 @@ UNHANDLED_ERROR_MESSAGE = (
 def create_app(
     settings: ServiceSettings | None = None,
     backend: SearchBackend | None = None,
+    reranker: Scorer | None = None,
 ) -> FastAPI:
     """
     Build the service application.
@@ -32,6 +34,8 @@ def create_app(
     :param settings: Service settings; read from the environment when omitted.
     :param backend: Pre-built backend, used by tests and by in-process embedding
         to bypass the configured catalogue.
+    :param reranker: Reranker shared by every graph. Passed in rather than built
+        here: on a CPU-only deployment the model runs in its own container.
     :return: The configured application.
     """
     settings = settings or ServiceSettings()
@@ -43,7 +47,7 @@ def create_app(
         registry = (
             GraphRegistry.of(settings, backend)
             if backend is not None
-            else GraphRegistry(settings)
+            else GraphRegistry(settings, reranker=reranker)
         )
         app.state.registry = registry
         try:

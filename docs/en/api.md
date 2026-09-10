@@ -75,6 +75,7 @@ Service settings are `RAGU_API_*` environment variables, read by
 | `RAGU_API_RATE_MIN_DELAY` | — | Minimum delay between LLM calls, seconds |
 | `RAGU_API_RATE_MAX_SIMULTANEOUS` | — | Maximum simultaneous LLM calls |
 | `RAGU_API_LLM_CACHE` | — | Path to the LLM response cache; unset disables caching |
+| `RAGU_API_RERANK_TIMEOUT` | `10` | Seconds to wait for the reranker before answering without it |
 | `RAGU_API_ENGINE_CACHE_SIZE` | `32` | How many (mode, language) engines to keep built |
 | `RAGU_API_MAX_BATCH_SIZE` | `50` | Maximum number of queries a /batch route accepts |
 | `RAGU_API_MAX_TOP_K` | `100` | Ceiling applied to a client-supplied `top_k` / `rerank_top_k` |
@@ -238,6 +239,21 @@ client chooses the language.
 The value is interpolated into the prompt, so it is constrained to a plain
 language name (`^[A-Za-z][A-Za-z \-]*$`, 2–32 characters) rather than accepted
 as free text.
+
+### Reranking
+
+`rerank` (default `true`) asks for the deployment's reranker; `rerank_top_k`
+inside `params` says how many results to keep after it.
+
+The service never constructs a reranker — on a CPU-only deployment the model
+runs in its own container — so one is passed to `create_app(reranker=...)`. With
+none configured, `rerank` is a no-op.
+
+A reranker that fails or exceeds `RAGU_API_RERANK_TIMEOUT` costs ranking
+quality, not the answer: the retrieval order is kept and `engines.rerank_error`
+says what happened, with `engines.reranked` false and `engines.degraded` true.
+Without that a reranker outage would surface as a 500 for a request the engines
+could still answer.
 
 ### Retrieval without generation
 

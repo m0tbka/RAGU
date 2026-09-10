@@ -193,6 +193,7 @@ class SearchCall:
         wrapped engine and does no planning.
     :param language: Answer language for this request. ``None`` falls back to
         the service default.
+    :param rerank: Whether to use the deployment's reranker, when it has one.
     """
 
     mode: SearchMode
@@ -202,6 +203,7 @@ class SearchCall:
     naive_params: NaiveSearchParams | None = None
     use_query_plan: bool = False
     language: str | None = None
+    rerank: bool = True
 
     @property
     def query(self) -> str:

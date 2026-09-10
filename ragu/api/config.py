@@ -92,6 +92,12 @@ class ServiceSettings(BaseSettings):
         description="Upper bound applied to a client-supplied top_k / rerank_top_k; "
         "requests above it are clamped",
     )
+    rerank_timeout: float | None = Field(
+        default=10.0,
+        gt=0,
+        description="Seconds to wait for the reranker before answering without it. "
+        "The model runs outside this process, so it can be slow or gone.",
+    )
     engine_cache_size: int = Field(
         default=32,
         gt=0,

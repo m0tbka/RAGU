@@ -31,10 +31,12 @@ from ragu.api.backends.base import (
 from ragu.api.config import GraphSpec, ServiceSettings
 from ragu.api.errors import BackendExecutionError, ServiceNotReadyError
 from ragu.api.mapping import extract_sources, to_outcome
+from ragu.api.reranking import ForgivingScorer, rerank_failure, reset_rerank_report
 from ragu.api.models import ChildEngineReport, EngineReport, SearchMode
 from ragu.common.logger import logger
 from ragu.models.embedder import Embedder
 from ragu.models.llm import LLM
+from ragu.models.scorer import Scorer
 from ragu.search_engine.base_engine import BaseEngine
 from ragu.search_engine.global_search import GlobalSearchParams
 from ragu.search_engine.local_search import LocalParams
@@ -122,11 +124,23 @@ class RaguBackend(SearchBackend):
     Real backend: a loaded graph plus one engine per search mode.
     """
 
-    def __init__(self, settings: ServiceSettings, spec: GraphSpec):
+    def __init__(
+        self,
+        settings: ServiceSettings,
+        spec: GraphSpec,
+        reranker: Scorer | None = None,
+    ):
         super().__init__(
             settings, graph_id=spec.id, language=spec.language or settings.language
         )
         self.spec = spec
+        # Supplied from outside: the model runs in its own process on the
+        # consumer's deployment, so the service wraps one rather than making one.
+        self._reranker = (
+            ForgivingScorer(reranker, settings.rerank_timeout)
+            if reranker is not None
+            else None
+        )
         # Token limits and tokenizer names are read off the Settings singleton by
         # the engine constructors. They are captured here, while this graph's
         # settings are applied, and passed explicitly afterwards so an engine
@@ -134,7 +148,9 @@ class RaguBackend(SearchBackend):
         # singleton holds by then.
         self._engine_kwargs: dict[str, Any] = {}
         self.graph: KnowledgeGraph | None = None
-        self._engines: dict[tuple[SearchMode, str], BaseEngine[Any, Any]] = {}
+        self._engines: dict[
+            tuple[SearchMode, str, bool], BaseEngine[Any, Any]
+        ] = {}
         self._clients: list[CachedAsyncOpenAI] = []
         self._llm: LLM | None = None
         self._embedder: Embedder | None = None
@@ -323,12 +339,15 @@ class RaguBackend(SearchBackend):
             community_summaries=len(summaries),
         )
 
-    def _build_engine(self, mode: SearchMode, language: str) -> BaseEngine[Any, Any]:
+    def _build_engine(
+        self, mode: SearchMode, language: str, rerank: bool = True
+    ) -> BaseEngine[Any, Any]:
         """
         Construct one leaf engine for a mode in a language.
 
         :param mode: ``global``, ``local`` or ``naive``.
         :param language: Answer language baked into the engine.
+        :param rerank: Whether this engine carries the reranker.
         :return: The engine.
         """
         graph, llm, embedder = self._require_loaded()
@@ -345,10 +364,13 @@ class RaguBackend(SearchBackend):
             knowledge_graph=graph,
             embedder=embedder,
             language=language,
+            reranker=self._reranker if rerank else None,
             **self._engine_kwargs,
         )
 
-    def _leaf_engine(self, mode: SearchMode, language: str) -> BaseEngine[Any, Any]:
+    def _leaf_engine(
+        self, mode: SearchMode, language: str, rerank: bool = True
+    ) -> BaseEngine[Any, Any]:
         """
         Return a cached leaf engine, building it on first use.
 
@@ -362,10 +384,10 @@ class RaguBackend(SearchBackend):
         :param language: Answer language.
         :return: The engine for that pair.
         """
-        key = (mode, language)
+        key = (mode, language, rerank)
         engine = self._engines.get(key)
         if engine is None:
-            engine = self._build_engine(mode, language)
+            engine = self._build_engine(mode, language, rerank)
             # A client picks the language, so the cache is bounded: drop the
             # oldest entry rather than growing without limit.
             while len(self._engines) >= self.settings.engine_cache_size:
@@ -404,12 +426,15 @@ class RaguBackend(SearchBackend):
         self.require_capability(call.mode)
         language = call.language or self.language
 
+        reset_rerank_report()
+        rerank = call.rerank and self._reranker is not None
+
         if call.mode != "mix":
-            return self._leaf_engine(call.mode, language), ()
+            return self._leaf_engine(call.mode, language, rerank), ()
 
         children = (
-            RecordingEngine(self._leaf_engine("local", language), "local"),
-            RecordingEngine(self._leaf_engine("naive", language), "naive"),
+            RecordingEngine(self._leaf_engine("local", language, rerank), "local"),
+            RecordingEngine(self._leaf_engine("naive", language, rerank), "naive"),
         )
         engine = MixSearchEngine(
             llm=self._require_llm(),
@@ -431,12 +456,16 @@ class RaguBackend(SearchBackend):
         query_plan: bool,
     ) -> EngineReport:
         reports = [child.report() for child in children]
+        failure = rerank_failure()
+        wanted_rerank = call.rerank and self._reranker is not None
         return EngineReport(
             requested=call.mode,
             used=engine_name,
             query_plan=query_plan,
-            degraded=any(not report.ok for report in reports),
+            degraded=any(not report.ok for report in reports) or failure is not None,
             children=reports,
+            reranked=wanted_rerank and failure is None,
+            rerank_error=failure,
         )
 
     async def stream(self, call: SearchCall) -> AsyncIterator[SearchStreamEvent]:

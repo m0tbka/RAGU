@@ -17,6 +17,8 @@ from ragu.api.config import GraphSpec, ServiceSettings
 from ragu.api.errors import GraphNotFoundError, ServiceNotReadyError
 from ragu.common.logger import logger
 
+from ragu.models.scorer import Scorer
+
 BackendFactory = Callable[[ServiceSettings, GraphSpec], SearchBackend]
 
 
@@ -29,15 +31,22 @@ class GraphRegistry:
         self,
         settings: ServiceSettings,
         factory: BackendFactory | None = None,
+        reranker: Scorer | None = None,
     ):
         """
         :param settings: Service settings; its ``resolved_graphs`` names the graphs.
         :param factory: Builds a backend for one spec. Injected by tests.
+        :param reranker: Reranker shared by every graph. Supplied by the caller
+            because the model runs outside this process.
         """
         from ragu.api.backends import build_backend
 
         self._settings = settings
-        self._factory = factory or build_backend
+        self._factory = factory or (
+            lambda service_settings, spec: build_backend(
+                service_settings, spec, reranker=reranker
+            )
+        )
         self._specs: dict[str, GraphSpec] = {
             spec.id: spec for spec in settings.resolved_graphs()
         }

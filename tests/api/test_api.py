@@ -561,7 +561,7 @@ class TestEngineInvocation:
         # Engines are cached per (mode, language): every engine bakes the answer
         # language in at construction.
         backend._engines = {
-            (mode, backend.settings.language): engine
+            (mode, backend.language, False): engine
             for mode, engine in engines.items()
         }
         return backend, engines
@@ -1116,10 +1116,10 @@ class TestMixDegradation:
         )
         llm = self.FakeLLM()
         backend._llm = llm
-        language = backend.settings.language
+        language = backend.language
         backend._engines = {
-            ("local", language): self.FailingChild(llm),
-            ("naive", language): self.WorkingChild(llm),
+            ("local", language, False): self.FailingChild(llm),
+            ("naive", language, False): self.WorkingChild(llm),
         }
         return backend
 
@@ -1150,7 +1150,7 @@ class TestMixDegradation:
 
     async def test_a_healthy_ensemble_is_not_marked_degraded(self):
         backend = self.build_backend()
-        backend._engines[("local", backend.settings.language)] = self.WorkingChild(
+        backend._engines[("local", backend.language, False)] = self.WorkingChild(
             backend._llm
         )
 
@@ -1299,7 +1299,7 @@ class TestBatchRoutes:
         backend = make_backend()
         backend.graph = object()
         backend._stats = GraphStats(entities=1, chunks=1, community_summaries=1)
-        backend._engines = {("naive", backend.settings.language): BatchSpy()}
+        backend._engines = {("naive", backend.language, False): BatchSpy()}
 
         import asyncio
 
@@ -1408,7 +1408,7 @@ class TestLanguagePerRequest:
         built = []
 
         class FakeEngine:
-            def __init__(self, mode, language):
+            def __init__(self, mode, language, rerank=True):
                 self.mode = mode
                 self.language = language
                 self.llm = object()
@@ -1672,3 +1672,130 @@ class TestSettingsIsolation:
         with pytest.raises(Exception) as failure:
             registry.resolve("broken")
         assert "storage folder is empty" in str(failure.value)
+
+
+class TestReranking:
+    """A reranker outage costs ranking quality, not the answer."""
+
+    def make_backend(self, scorer):
+        settings = ServiceSettings(backend="ragu")
+        from ragu.api.backends.ragu_backend import RaguBackend
+
+        backend = RaguBackend(settings, settings.resolved_graphs()[0], reranker=scorer)
+        backend.graph = object()
+        backend._llm = object()
+        backend._embedder = object()
+        backend._stats = GraphStats(entities=1, chunks=1, community_summaries=1)
+
+        class FakeEngine:
+            """Calls the reranker the way the real engines do."""
+
+            def __init__(self, mode, language, rerank=True):
+                self.reranker = backend._reranker if rerank else None
+                self.llm = object()
+
+            async def batch_query(self, queries, params=None):
+                if self.reranker is not None:
+                    await self.reranker.score(queries[0], ["a", "b"])
+                return [
+                    SearchEngineResponse(
+                        query=query,
+                        response="ответ",
+                        retrieval=make_retrieval("text"),
+                    )
+                    for query in queries
+                ]
+
+        backend._build_engine = FakeEngine
+        return backend
+
+    async def test_a_failing_reranker_still_answers(self):
+        from ragu.models.scorer import Scorer
+
+        class BrokenScorer(Scorer):
+            async def score(self, text_1, text_2, **kwargs):
+                raise RuntimeError("reranker container is down")
+
+        backend = self.make_backend(BrokenScorer())
+
+        outcome, = await backend.search(SearchCall(mode="naive", queries=("q",)))
+
+        assert outcome.answer == "ответ"
+        assert outcome.engines.reranked is False
+        assert "reranker container is down" in outcome.engines.rerank_error
+        assert outcome.engines.degraded is True
+
+    async def test_a_failing_reranker_keeps_the_retrieval_order(self):
+        from ragu.models.scorer import Scorer
+        from ragu.api.reranking import ForgivingScorer
+
+        class BrokenScorer(Scorer):
+            async def score(self, text_1, text_2, **kwargs):
+                raise RuntimeError("boom")
+
+        ranked = await ForgivingScorer(BrokenScorer()).score("q", ["a", "b", "c"])
+        assert [index for index, _ in ranked] == [0, 1, 2]
+
+    async def test_a_slow_reranker_is_given_up_on(self):
+        import asyncio
+
+        from ragu.models.scorer import Scorer
+        from ragu.api.reranking import ForgivingScorer, rerank_failure, reset_rerank_report
+
+        class SlowScorer(Scorer):
+            async def score(self, text_1, text_2, **kwargs):
+                await asyncio.sleep(5)
+                return []
+
+        reset_rerank_report()
+        ranked = await ForgivingScorer(SlowScorer(), timeout=0.01).score("q", ["a"])
+
+        assert [index for index, _ in ranked] == [0]
+        assert "timed out" in rerank_failure()
+
+    async def test_a_working_reranker_is_reported_as_used(self):
+        from ragu.models.scorer import Scorer
+
+        class GoodScorer(Scorer):
+            async def score(self, text_1, text_2, **kwargs):
+                return [(index, 1.0) for index in reversed(range(len(text_2)))]
+
+        backend = self.make_backend(GoodScorer())
+
+        outcome, = await backend.search(SearchCall(mode="naive", queries=("q",)))
+
+        assert outcome.engines.reranked is True
+        assert outcome.engines.rerank_error is None
+        assert outcome.engines.degraded is False
+
+    async def test_a_client_can_turn_reranking_off(self):
+        from ragu.models.scorer import Scorer
+
+        class GoodScorer(Scorer):
+            async def score(self, text_1, text_2, **kwargs):
+                return []
+
+        backend = self.make_backend(GoodScorer())
+
+        outcome, = await backend.search(
+            SearchCall(mode="naive", queries=("q",), rerank=False)
+        )
+
+        assert outcome.engines.reranked is False
+        assert outcome.engines.rerank_error is None
+
+    async def test_no_reranker_configured_is_not_a_degradation(self):
+        backend = self.make_backend(None)
+
+        outcome, = await backend.search(SearchCall(mode="naive", queries=("q",)))
+
+        assert outcome.engines.reranked is False
+        assert outcome.engines.degraded is False
+
+    def test_rerank_is_a_request_field(self):
+        with build_client() as client:
+            response = client.post(
+                "/v1/search/naive",
+                json={"query": "q", "rerank": False, "params": {"rerank_top_k": 3}},
+            )
+        assert response.status_code == 200

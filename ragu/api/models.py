@@ -21,6 +21,13 @@ CAPABILITIES: frozenset[str] = frozenset(get_args(Capability))
 # The value is interpolated into the answer prompt ("Provide the answer in the
 # following language: {{ language }}"), so it is a prompt-injection surface: it
 # is constrained to a plain language name rather than accepted as free text.
+
+RerankField = Field(
+    default=True,
+    description="Use the configured reranker. A no-op when the deployment has "
+    "none; a failing one degrades to the un-reranked order rather than a 500.",
+)
+
 LanguageField = Field(
     default=None,
     min_length=2,
@@ -55,6 +62,7 @@ class LocalSearchRequest(BaseModel):
         "use_summary, use_chunks",
     )
     language: str | None = LanguageField
+    rerank: bool = RerankField
 
 
 class NaiveSearchRequest(BaseModel):
@@ -69,6 +77,7 @@ class NaiveSearchRequest(BaseModel):
         description="NaiveSearchEngine retrieval parameters: top_k, rerank_top_k",
     )
     language: str | None = LanguageField
+    rerank: bool = RerankField
 
 
 class MixSearchRequest(BaseModel):
@@ -93,6 +102,7 @@ class MixSearchRequest(BaseModel):
         description="Parameters for the naive child engine",
     )
     language: str | None = LanguageField
+    rerank: bool = RerankField
 
 
 class ChildEngineReport(BaseModel):
@@ -129,6 +139,13 @@ class EngineReport(BaseModel):
     )
     children: list[ChildEngineReport] = Field(
         default_factory=list, description="Per-child outcome, for ensemble engines"
+    )
+    reranked: bool = Field(
+        default=False, description="Whether a reranker actually reordered the results"
+    )
+    rerank_error: str | None = Field(
+        default=None,
+        description="Why reranking was skipped; the answer is the un-reranked one",
     )
 
 
@@ -182,6 +199,7 @@ class LocalRetrieveRequest(BaseModel):
 
     query: str = Field(min_length=1, description="Search query")
     params: LocalParams = Field(default_factory=LocalParams)
+    rerank: bool = RerankField
 
 
 class NaiveRetrieveRequest(BaseModel):
@@ -189,6 +207,7 @@ class NaiveRetrieveRequest(BaseModel):
 
     query: str = Field(min_length=1, description="Search query")
     params: NaiveSearchParams = Field(default_factory=NaiveSearchParams)
+    rerank: bool = RerankField
 
 
 class MixRetrieveRequest(BaseModel):
@@ -198,6 +217,7 @@ class MixRetrieveRequest(BaseModel):
     params: MixQueryParams = Field(default_factory=MixQueryParams)
     local_params: LocalParams = Field(default_factory=LocalParams)
     naive_params: NaiveSearchParams = Field(default_factory=NaiveSearchParams)
+    rerank: bool = RerankField
 
 
 class RetrieveResponse(BaseModel):
@@ -239,12 +259,14 @@ class LocalBatchRequest(BatchQueries):
     use_query_plan: bool = Field(default=True)
     params: LocalParams = Field(default_factory=LocalParams)
     language: str | None = LanguageField
+    rerank: bool = RerankField
 
 
 class NaiveBatchRequest(BatchQueries):
     use_query_plan: bool = Field(default=True)
     params: NaiveSearchParams = Field(default_factory=NaiveSearchParams)
     language: str | None = LanguageField
+    rerank: bool = RerankField
 
 
 class MixBatchRequest(BatchQueries):
@@ -253,6 +275,7 @@ class MixBatchRequest(BatchQueries):
     local_params: LocalParams = Field(default_factory=LocalParams)
     naive_params: NaiveSearchParams = Field(default_factory=NaiveSearchParams)
     language: str | None = LanguageField
+    rerank: bool = RerankField
 
 
 class BatchSearchItem(BaseModel):
