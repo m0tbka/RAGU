@@ -27,6 +27,7 @@ from ragu.api.errors import (
     ServiceNotReadyError,
 )
 from ragu.api.jobs import Job, JobManager
+from ragu.api.metrics import GRAPHS, JOBS, SEARCHES, metrics
 from ragu.api.models import (
     BatchSearchItem,
     BatchSearchResponse,
@@ -86,6 +87,14 @@ def _response(call: SearchCall, outcome: SearchOutcome) -> SearchResponse:
     :param outcome: Normalized backend outcome.
     :return: The response body.
     """
+    report = outcome.engines
+    metrics.increment(
+        SEARCHES,
+        (
+            ("mode", call.mode),
+            ("outcome", "degraded" if report and report.degraded else "ok"),
+        ),
+    )
     return SearchResponse(
         query=call.query,
         mode=call.mode,
@@ -675,6 +684,33 @@ async def cancel_job(request: Request, job_id: str) -> JobResponse:
     if job is None:
         raise JobNotFoundError(f"No job with id '{job_id}'.")
     return _job_response(job)
+
+
+@router.get("/metrics", include_in_schema=False)
+async def prometheus_metrics(request: Request) -> Response:
+    """
+    Everything this process has counted, in Prometheus text format.
+    """
+    registry = _registry(request)
+    if registry is not None:
+        loaded = sum(
+            1
+            for graph_id in registry.ids
+            if (backend := registry.backend(graph_id)) is not None
+            and backend.graph_loaded
+        )
+        metrics.set(GRAPHS, loaded, (("state", "loaded"),))
+        metrics.set(GRAPHS, len(registry.ids) - loaded, (("state", "unavailable"),))
+
+    manager = getattr(request.app.state, "jobs", None)
+    if manager is not None:
+        counts: dict[str, int] = {}
+        for job in await manager.store.list():
+            counts[job.state] = counts.get(job.state, 0) + 1
+        for state in ("queued", "running", "succeeded", "failed", "cancelled"):
+            metrics.set(JOBS, counts.get(state, 0), (("state", state),))
+
+    return Response(content=metrics.render(), media_type="text/plain; version=0.0.4")
 
 
 # The catalogue path is canonical; the flat one is kept for clients written

@@ -343,7 +343,13 @@ class TestErrorEnvelope:
                 client.post("/v1/search/naive", json={"query": ""}).json()["error"],
             ]
         for error in errors:
-            assert set(error) == {"code", "mode", "missing_capability", "message"}
+            assert set(error) == {
+                "code",
+                "mode",
+                "missing_capability",
+                "message",
+                "request_id",
+            }
 
 
 class TestResponseConversion:
@@ -1985,3 +1991,209 @@ class TestJobManager:
         await manager.shutdown()
 
         assert manager._tasks == {}
+
+
+class TestRequestCorrelation:
+    """A 500 says 'see the log'; the id is how the log line is found."""
+
+    def test_every_response_carries_a_request_id(self):
+        with build_client() as client:
+            response = client.get("/health")
+        assert response.headers["X-Request-ID"]
+
+    def test_a_client_supplied_id_is_kept(self):
+        with build_client() as client:
+            response = client.get("/health", headers={"X-Request-ID": "trace-42"})
+        assert response.headers["X-Request-ID"] == "trace-42"
+
+    def test_the_error_envelope_repeats_it(self):
+        with build_client(missing="entity_graph") as client:
+            response = client.post(
+                "/v1/search/local",
+                json={"query": "q"},
+                headers={"X-Request-ID": "trace-99"},
+            )
+        assert response.json()["error"]["request_id"] == "trace-99"
+        assert response.headers["X-Request-ID"] == "trace-99"
+
+
+class TestAuth:
+    """Every request costs LLM calls, so an open service is an open budget."""
+
+    def keyed_client(self) -> TestClient:
+        return TestClient(
+            create_app(ServiceSettings(backend="stub", api_keys="secret-a,secret-b"))
+        )
+
+    def test_a_request_without_a_key_is_refused(self):
+        with self.keyed_client() as client:
+            response = client.post("/v1/search/naive", json={"query": "q"})
+        assert response.status_code == 401
+        assert response.json()["error"]["code"] == "UNAUTHORIZED"
+        assert response.headers["WWW-Authenticate"] == "Bearer"
+
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            {"Authorization": "Bearer secret-a"},
+            {"Authorization": "bearer secret-b"},
+            {"X-API-Key": "secret-a"},
+        ],
+    )
+    def test_an_accepted_key_gets_through(self, headers):
+        with self.keyed_client() as client:
+            response = client.post(
+                "/v1/search/naive", json={"query": "q"}, headers=headers
+            )
+        assert response.status_code == 200
+
+    def test_a_wrong_key_is_refused(self):
+        with self.keyed_client() as client:
+            response = client.post(
+                "/v1/search/naive",
+                json={"query": "q"},
+                headers={"X-API-Key": "secret-c"},
+            )
+        assert response.status_code == 401
+
+    def test_probes_stay_open(self):
+        # An orchestrator has no key, and a client needs the schema to talk.
+        with self.keyed_client() as client:
+            for path in ("/health", "/health/live", "/health/ready", "/openapi.json"):
+                assert client.get(path).status_code in (200, 503)
+
+    def test_no_keys_configured_leaves_the_service_open(self):
+        with build_client() as client:
+            assert client.post("/v1/search/naive", json={"query": "q"}).status_code == 200
+
+
+class TestRequestBounds:
+    def test_an_oversized_body_is_refused(self):
+        with build_client(max_body_bytes=200) as client:
+            response = client.post(
+                "/v1/search/naive", json={"query": "x" * 1000}
+            )
+        assert response.status_code == 413
+        assert response.json()["error"]["code"] == "PAYLOAD_TOO_LARGE"
+
+    def test_a_body_within_the_limit_is_read(self):
+        with build_client(max_body_bytes=32 * 1024) as client:
+            assert client.post("/v1/search/naive", json={"query": "q"}).status_code == 200
+
+    def test_a_request_that_overruns_is_abandoned(self):
+        import asyncio
+
+        class SlowBackend:
+            graph_loaded = True
+            stats = None
+            graph_id = "default"
+            language = "russian"
+
+            async def startup(self):
+                pass
+
+            async def shutdown(self):
+                pass
+
+            def require_capability(self, mode):
+                pass
+
+            def require_evidence(self, mode, outcome):
+                pass
+
+            async def search(self, call):
+                await asyncio.sleep(5)
+                return []
+
+        app = create_app(
+            ServiceSettings(backend="stub", request_timeout=0.05), backend=SlowBackend()
+        )
+        with TestClient(app) as client:
+            response = client.post("/v1/search/naive", json={"query": "q"})
+
+        assert response.status_code == 504
+        assert response.json()["error"]["code"] == "REQUEST_TIMEOUT"
+        assert response.headers["Retry-After"] == "30"
+
+
+class TestCors:
+    def test_no_origins_means_no_cors_headers(self):
+        with build_client() as client:
+            response = client.get("/health", headers={"Origin": "https://ui.example"})
+        assert "access-control-allow-origin" not in response.headers
+
+    def test_a_configured_origin_is_allowed(self):
+        settings = ServiceSettings(backend="stub", cors_origins="https://ui.example")
+        with TestClient(create_app(settings)) as client:
+            response = client.get("/health", headers={"Origin": "https://ui.example"})
+        assert response.headers["access-control-allow-origin"] == "https://ui.example"
+        assert "X-Request-ID" in response.headers["access-control-expose-headers"]
+
+
+class TestMetrics:
+    """Every request costs money; the operator needs to see the shape of it."""
+
+    def test_metrics_are_exposed_in_prometheus_format(self):
+        with build_client() as client:
+            client.post("/v1/search/naive", json={"query": "q"})
+            body = client.get("/metrics").text
+        assert "# TYPE ragu_api_requests_total counter" in body
+        assert "# TYPE ragu_api_request_duration_seconds histogram" in body
+        assert 'ragu_api_searches_total{mode="naive",outcome="ok"}' in body
+
+    def test_the_route_template_is_the_label_not_the_url(self):
+        # Otherwise every graph id and query would open a new time series.
+        with build_client() as client:
+            client.post("/v1/graphs/default/search/naive", json={"query": "q"})
+            body = client.get("/metrics").text
+        assert 'path="/v1/graphs/{graph_id}/search/naive"' in body
+
+    def test_a_degraded_search_is_counted_apart(self):
+        with build_client() as client:
+            client.post("/v1/search/naive", json={"query": "q"})
+            body = client.get("/metrics").text
+        assert 'outcome="ok"' in body
+
+    def test_graph_and_job_gauges_are_reported(self):
+        with ingest_client() as client:
+            client.post("/v1/graphs/corpus/documents", json={"documents": ["a"]})
+            body = client.get("/metrics").text
+        assert 'ragu_api_graphs{state="loaded"}' in body
+        assert "ragu_api_jobs{" in body
+
+    def test_metrics_stay_reachable_without_a_key(self):
+        settings = ServiceSettings(backend="stub", api_keys="secret")
+        with TestClient(create_app(settings)) as client:
+            assert client.get("/metrics").status_code == 200
+
+    def test_the_histogram_is_cumulative(self):
+        from ragu.api.metrics import DURATION, Metrics
+
+        registry = Metrics()
+        registry.observe(DURATION, 0.3)
+        registry.observe(DURATION, 7.0)
+        lines = registry.render().splitlines()
+
+        buckets = {
+            line.split('le="')[1].split('"')[0]: int(line.rsplit(" ", 1)[1])
+            for line in lines
+            if "_bucket{" in line
+        }
+        assert buckets["0.25"] == 0
+        assert buckets["0.5"] == 1
+        assert buckets["10"] == 2
+        assert buckets["+Inf"] == 2
+        assert "ragu_api_request_duration_seconds_count 2" in lines
+
+    def test_observations_are_not_accumulated_one_by_one(self):
+        # A long-running service must not keep a float per request.
+        from ragu.api.metrics import DURATION, Metrics
+
+        registry = Metrics()
+        for _ in range(10_000):
+            registry.observe(DURATION, 0.1)
+        series = registry._histograms[DURATION][()]
+        assert series.count == 10_000
+        assert len(series.buckets) == len(
+            __import__("ragu.api.metrics", fromlist=["DURATION_BUCKETS"]).DURATION_BUCKETS
+        )

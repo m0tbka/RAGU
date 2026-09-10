@@ -122,6 +122,28 @@ class ServiceSettings(BaseSettings):
         description="Upper bound applied to a client-supplied top_k / rerank_top_k; "
         "requests above it are clamped",
     )
+    api_keys: str = Field(
+        default="",
+        description="Comma-separated API keys. Empty leaves the service open, "
+        "which suits a local stub and nothing else.",
+    )
+    cors_origins: str = Field(
+        default="",
+        description="Comma-separated allowed origins for browser clients. Empty "
+        "sends no CORS headers.",
+    )
+    max_body_bytes: int = Field(
+        default=32 * 1024 * 1024,
+        gt=0,
+        description="Largest request body the service will read; ingestion takes "
+        "whole documents, so this is generous rather than tight",
+    )
+    request_timeout: float | None = Field(
+        default=300.0,
+        gt=0,
+        description="Seconds a single request may take before it is abandoned. "
+        "Global search is N+1 LLM calls, so this is minutes, not seconds.",
+    )
     rerank_timeout: float | None = Field(
         default=10.0,
         gt=0,
@@ -197,6 +219,18 @@ class ServiceSettings(BaseSettings):
     @staticmethod
     def _split(value: str) -> set[str]:
         return {item.strip() for item in value.split(",") if item.strip()}
+
+    def api_keys_set(self) -> set[str]:
+        """
+        The keys this service accepts. Empty means it is open.
+        """
+        return self._split(self.api_keys)
+
+    def cors_origins_list(self) -> list[str]:
+        """
+        Origins allowed to call this service from a browser.
+        """
+        return sorted(self._split(self.cors_origins))
 
     def missing_capabilities(self) -> set[str]:
         """

@@ -7,6 +7,7 @@ here are authored for clients; details that come from an exception stay in
 ``detail`` and are logged, never returned.
 """
 
+from ragu.api.request_context import current_request_id
 from ragu.api.models import Capability, ErrorBody, ErrorResponse
 
 # How long a client should wait before retrying a service that is not ready.
@@ -57,6 +58,7 @@ class RaguServiceError(Exception):
                 mode=self.mode,
                 missing_capability=self.missing_capability,
                 message=self.message,
+                request_id=current_request_id(),
             )
         ).model_dump()
 
@@ -91,6 +93,41 @@ class CapabilityUnavailableError(RaguServiceError):
     @property
     def missing_capability(self) -> str | None:
         return self._missing_capability
+
+
+class UnauthorizedError(RaguServiceError):
+    """
+    The request carried no accepted API key (401).
+    """
+
+    code = "UNAUTHORIZED"
+    status_code = 401
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return {"WWW-Authenticate": "Bearer"}
+
+
+class PayloadTooLargeError(RaguServiceError):
+    """
+    The request body is larger than the service will read (413).
+    """
+
+    code = "PAYLOAD_TOO_LARGE"
+    status_code = 413
+
+
+class RequestTimeoutError(RaguServiceError):
+    """
+    The request took longer than the service will spend on one (504).
+    """
+
+    code = "REQUEST_TIMEOUT"
+    status_code = 504
+
+    @property
+    def headers(self) -> dict[str, str]:
+        return {"Retry-After": str(RETRY_AFTER_SECONDS)}
 
 
 class GraphNotFoundError(RaguServiceError):

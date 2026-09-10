@@ -2,15 +2,25 @@
 FastAPI application factory.
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from ragu.api.backends.base import SearchBackend
+from ragu.api.errors import RequestTimeoutError
 from ragu.api.jobs import JobManager
+from ragu.api.middleware import (
+    AuthMiddleware,
+    BodyLimitMiddleware,
+    MetricsMiddleware,
+    RequestContextMiddleware,
+)
 from ragu.api.registry import GraphRegistry
+from ragu.api.request_context import REQUEST_ID_HEADER
 from ragu.api.config import ServiceSettings
 from ragu.api.errors import InvalidRequestError, RaguServiceError
 from ragu.api.routes import router
@@ -52,6 +62,11 @@ def create_app(
         )
         app.state.registry = registry
         app.state.jobs = JobManager()
+        if not settings.api_keys_set():
+            logger.warning(
+                "No RAGU_API_API_KEYS configured: this service is open to anyone "
+                "who can reach it, and every request costs LLM calls."
+            )
         try:
             await registry.startup()
         except Exception as exc:
@@ -70,6 +85,8 @@ def create_app(
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    _install_middleware(app, settings)
 
     @app.exception_handler(RaguServiceError)
     async def _service_error_handler(_: Request, exc: RaguServiceError) -> JSONResponse:
@@ -102,3 +119,50 @@ def create_app(
 
     app.include_router(router)
     return app
+
+
+def _install_middleware(app: FastAPI, settings: ServiceSettings) -> None:
+    """
+    Wrap the application in the concerns that apply to every route.
+
+    Order matters: Starlette runs the last one added first, so the request id
+    is bound before anything else can fail and want to report it.
+    """
+    if settings.request_timeout is not None:
+
+        @app.middleware("http")
+        async def _timeout(request: Request, call_next):
+            # A request that outlives this is not going to succeed, and it holds
+            # an LLM budget open while it waits.
+            try:
+                return await asyncio.wait_for(
+                    call_next(request), settings.request_timeout
+                )
+            except asyncio.TimeoutError:
+                error = RequestTimeoutError(
+                    f"The request exceeded {settings.request_timeout}s and was "
+                    "abandoned."
+                )
+                return JSONResponse(
+                    status_code=error.status_code,
+                    content=error.to_envelope(),
+                    headers=error.headers or None,
+                )
+
+    app.add_middleware(MetricsMiddleware)
+    app.add_middleware(BodyLimitMiddleware, max_bytes=settings.max_body_bytes)
+    app.add_middleware(AuthMiddleware, settings=settings)
+
+    origins = settings.cors_origins_list()
+    if origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+            expose_headers=[REQUEST_ID_HEADER],
+        )
+
+    # Added last, so it runs first and every other layer can report the id.
+    app.add_middleware(RequestContextMiddleware)

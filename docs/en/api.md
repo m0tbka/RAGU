@@ -7,11 +7,12 @@
 4. [The graph catalogue](#the-graph-catalogue)
 5. [Ingestion](#ingestion)
 6. [Search endpoints](#search-endpoints)
-7. [Health and readiness](#health-and-readiness)
-8. [Errors](#errors)
-9. [Design decisions](#design-decisions)
-10. [Logging](#logging)
-11. [Current limits](#current-limits)
+7. [Operations](#operations)
+8. [Health and readiness](#health-and-readiness)
+9. [Errors](#errors)
+10. [Design decisions](#design-decisions)
+11. [Logging](#logging)
+12. [Current limits](#current-limits)
 
 ---
 
@@ -66,6 +67,10 @@ Service settings are `RAGU_API_*` environment variables, read by
 | Variable | Default | Meaning |
 |---|---|---|
 | `RAGU_API_GRAPHS` | — | Graphs to serve, as a JSON list. Unset means one graph from the flat variables |
+| `RAGU_API_API_KEYS` | — | Comma-separated API keys; empty leaves the service open |
+| `RAGU_API_CORS_ORIGINS` | — | Comma-separated browser origins |
+| `RAGU_API_MAX_BODY_BYTES` | `33554432` | Largest request body read |
+| `RAGU_API_REQUEST_TIMEOUT` | `300` | Seconds one request may take |
 | `RAGU_API_BACKEND` | `ragu` | `ragu` loads a real graph, `stub` serves canned answers |
 | `RAGU_API_HOST` | `127.0.0.1` | Bind address; the container image passes `--host 0.0.0.0` itself |
 | `RAGU_API_PORT` | `8020` | Bind port |
@@ -342,6 +347,42 @@ Every response carries `engines`:
 raises, so without this "graph and chunks" would be indistinguishable from
 "chunks only". `degraded` is true whenever some child did not contribute.
 
+## Operations
+
+### Authentication
+
+`RAGU_API_API_KEYS` is a comma-separated list. A request presents one as
+`Authorization: Bearer <key>` or `X-API-Key: <key>`; comparison is constant-time.
+
+With the variable empty the service is **open**, which suits a local stub and
+nothing else — the log says so at startup. `/health*`, `/metrics` and the
+OpenAPI documents stay open regardless: an orchestrator has no key, and a client
+needs the schema to talk.
+
+### Correlation
+
+Every response carries `X-Request-ID`, echoing the client's if it sent one, and
+the error envelope repeats it in `request_id`. A `500` says only "see the
+service log"; without a shared id there is no way to find the line it refers to.
+
+### Metrics
+
+`GET /metrics` renders Prometheus text: `ragu_api_requests_total`,
+`ragu_api_request_duration_seconds` (a histogram out to five minutes, because a
+global search is N+1 LLM calls), `ragu_api_searches_total` by mode and by
+whether the answer was degraded, and gauges for graphs and jobs.
+
+Labels use the route template, so a graph id or a job id cannot open a time
+series of its own.
+
+### Bounds
+
+| Variable | Default | |
+|---|---|---|
+| `RAGU_API_MAX_BODY_BYTES` | 32 MiB | Larger bodies answer `413` |
+| `RAGU_API_REQUEST_TIMEOUT` | `300` | Longer requests answer `504`; they hold an LLM budget open while they wait |
+| `RAGU_API_CORS_ORIGINS` | — | Comma-separated; empty sends no CORS headers |
+
 ## Health and readiness
 
 | Route | Status | Use |
@@ -380,6 +421,9 @@ All errors share one envelope:
 | Status | Code | Situation |
 |---|---|---|
 | 400 | `INVALID_REQUEST` | empty `query`, bad field type, unknown field |
+| 401 | `UNAUTHORIZED` | no accepted API key was presented |
+| 413 | `PAYLOAD_TOO_LARGE` | the request body exceeds the limit |
+| 504 | `REQUEST_TIMEOUT` | the request outlived RAGU_API_REQUEST_TIMEOUT |
 | 404 | `GRAPH_NOT_FOUND` | the path names a graph that is not configured |
 | 404 | `JOB_NOT_FOUND` | no job with that id in this process |
 | 409 | `GRAPH_BUSY` | the graph is being built; carries `Retry-After` |
@@ -446,5 +490,5 @@ Known gaps, listed so they are not mistaken for oversights:
 
 - **No graph CRUD.** Entities, relations, chunks and communities cannot be
   read or edited over HTTP.
-- **No authentication, quotas or metrics.** Every request costs LLM calls;
-  put the service behind a gateway that authenticates and rate-limits it.
+- **No per-request budgets or admission control.** A key gets in; nothing yet
+  caps what one request may spend or how many may run at once.

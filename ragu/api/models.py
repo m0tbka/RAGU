@@ -306,6 +306,11 @@ class ErrorBody(BaseModel):
     mode: str | None = None
     missing_capability: str | None = None
     message: str
+    request_id: str | None = Field(
+        default=None,
+        description="Correlates this response with the service log; echoed in "
+        "the X-Request-ID header",
+    )
 
 
 class ErrorResponse(BaseModel):
