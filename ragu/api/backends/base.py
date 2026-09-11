@@ -369,6 +369,84 @@ class SearchBackend(ABC):
             "in its configuration to build it over HTTP."
         )
 
+    # --- the graph surface ---------------------------------------------------
+    #
+    # Reads rather than searches: a client that draws the graph or traces an
+    # answer back to its chunk needs the structure, not an answer about it.
+    # Backends that hold no real graph refuse them rather than inventing shapes.
+
+    def _no_surface(self, what: str) -> InvalidRequestError:
+        return InvalidRequestError(
+            f"Graph '{self.graph_id}' does not expose {what}."
+        )
+
+    async def graph_detail(self) -> Any:
+        """
+        Sizes, embedding dimension and mode availability for this graph.
+        """
+        raise self._no_surface("its structure")
+
+    async def list_entities(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        entity_type: str | None = None,
+        search: str | None = None,
+    ) -> tuple[int, list[Any]]:
+        """
+        A page of entities, filtered by type and by name substring.
+
+        :return: Total matching before paging, and the page itself.
+        """
+        raise self._no_surface("its entities")
+
+    async def list_relations(
+        self, *, limit: int, offset: int, min_strength: float | None = None
+    ) -> tuple[int, list[Any]]:
+        """
+        A page of relations, optionally only the strong ones.
+        """
+        raise self._no_surface("its relations")
+
+    async def neighbors(self, entity_id: str, depth: int, limit: int) -> Any:
+        """
+        Everything within ``depth`` hops of an entity.
+        """
+        raise self._no_surface("its neighbourhoods")
+
+    async def list_communities(
+        self, *, limit: int, offset: int, level: int | None = None
+    ) -> tuple[int, list[Any]]:
+        """
+        A page of detected communities.
+        """
+        raise self._no_surface("its communities")
+
+    async def get_community(self, community_id: str) -> Any:
+        """
+        One community with its members.
+        """
+        raise self._no_surface("its communities")
+
+    async def get_chunk(self, chunk_id: str) -> Any:
+        """
+        One source chunk, for tracing an answer back to the corpus.
+        """
+        raise self._no_surface("its chunks")
+
+    async def consistency(self) -> Any:
+        """
+        The cross-storage consistency audit.
+        """
+        raise self._no_surface("a consistency report")
+
+    async def reindex(self, kind: str) -> dict[str, Any]:
+        """
+        Rebuild part of the graph in place.
+        """
+        raise self._no_surface("reindexing")
+
     def capabilities(self) -> dict[SearchMode, Capability | None]:
         """
         Which modes this graph can serve, and what each unservable one lacks.

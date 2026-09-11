@@ -2358,3 +2358,168 @@ class TestAdmissionControl:
         async with admission.slot():
             async with admission.slot():
                 pass
+
+
+class TestGraphSurface:
+    """Reads of the structure, for a client that draws the graph."""
+
+    def test_stats_describe_the_corpus(self):
+        with build_client() as client:
+            body = client.get("/v1/graphs/default/stats").json()
+        assert body["id"] == "default"
+        assert body["loaded"] is True
+        assert body["embedding_dim"] == 8
+        assert body["documents"] == 1
+        assert {mode["mode"] for mode in body["modes"]} == {
+            "global",
+            "local",
+            "naive",
+            "mix",
+        }
+
+    def test_entities_are_paged(self):
+        with build_client() as client:
+            body = client.get(
+                "/v1/graphs/default/entities", params={"limit": 1, "offset": 0}
+            ).json()
+        assert body["page"] == {"total": 2, "limit": 1, "offset": 0}
+        assert len(body["entities"]) == 1
+
+    def test_entities_filter_by_type_and_name(self):
+        with build_client() as client:
+            by_type = client.get(
+                "/v1/graphs/default/entities", params={"type": "PERSON"}
+            ).json()
+            by_name = client.get(
+                "/v1/graphs/default/entities", params={"search": "польш"}
+            ).json()
+        assert [e["name"] for e in by_type["entities"]] == ["Сенкевич"]
+        assert [e["name"] for e in by_name["entities"]] == ["Польша"]
+
+    def test_relations_filter_by_strength(self):
+        with build_client() as client:
+            kept = client.get(
+                "/v1/graphs/default/relations", params={"min_strength": 0.5}
+            ).json()
+            dropped = client.get(
+                "/v1/graphs/default/relations", params={"min_strength": 5}
+            ).json()
+        assert kept["page"]["total"] == 1
+        assert dropped["page"]["total"] == 0
+
+    def test_neighbors_return_a_subgraph(self):
+        with build_client() as client:
+            body = client.get(
+                "/v1/graphs/default/entities/entity_1/neighbors",
+                params={"depth": 2},
+            ).json()
+        assert body["root"] == "entity_1"
+        assert body["depth"] == 2
+        assert body["entities"] and body["relations"]
+        # The client lays the graph out itself; no coordinates come back.
+        assert "x" not in body["entities"][0]
+
+    def test_an_unknown_entity_answers_404(self):
+        with build_client() as client:
+            response = client.get("/v1/graphs/default/entities/nope/neighbors")
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "NOT_FOUND"
+
+    def test_communities_carry_their_summary(self):
+        with build_client() as client:
+            listing = client.get("/v1/graphs/default/communities").json()
+            detail = client.get("/v1/graphs/default/communities/com-1").json()
+        assert listing["communities"][0]["summary"] == "stub community summary"
+        assert detail["id"] == "com-1"
+        assert detail["level"] == 0
+
+    def test_a_chunk_can_be_traced(self):
+        with build_client() as client:
+            body = client.get("/v1/graphs/default/chunks/chunk_1").json()
+            missing = client.get("/v1/graphs/default/chunks/nope")
+        assert body["content"] == "stub chunk"
+        assert body["doc_id"] == "doc-1"
+        assert missing.status_code == 404
+
+    def test_consistency_is_reported(self):
+        with build_client() as client:
+            body = client.get("/v1/graphs/default/consistency").json()
+        assert body["consistent"] is True
+        assert body["issues"] == []
+
+    def test_the_ontology_is_published(self):
+        with build_client() as client:
+            body = client.get("/v1/ontology").json()
+        assert body["entity_types"]
+        assert body["relation_types"]
+
+    def test_a_backend_without_a_graph_refuses_the_surface(self):
+        # The base class declines rather than inventing a shape.
+        from ragu.api.backends.base import SearchBackend
+
+        assert hasattr(SearchBackend, "list_entities")
+
+
+class TestReindex:
+    def test_reindex_is_a_job(self):
+        with build_client() as client:
+            response = client.post("/v1/graphs/default/reindex/community")
+        assert response.status_code == 202
+        body = response.json()
+        assert body["kind"] == "reindex"
+        assert response.headers["Location"] == f"/v1/jobs/{body['id']}"
+
+    def test_an_unknown_reindex_fails_the_job(self):
+        with build_client() as client:
+            job_id = client.post("/v1/graphs/default/reindex/nonsense").json()["id"]
+            for _ in range(50):
+                job = client.get(f"/v1/jobs/{job_id}").json()
+                if job["state"] in ("succeeded", "failed"):
+                    break
+        assert job["state"] == "failed"
+        assert "Unknown reindex" in job["error"]
+
+
+class TestGraphCacheInvalidation:
+    """A build changes the graph; the materialized lists must not survive it."""
+
+    async def test_building_drops_the_materialized_lists(self):
+        from ragu.api.config import GraphSpec
+
+        backend = make_backend()
+        backend.graph = object()
+        backend._node_cache = ["stale"]
+        backend._edge_cache = ["stale"]
+
+        backend._drop_graph_cache()
+
+        assert backend._node_cache is None
+        assert backend._edge_cache is None
+
+    async def test_entities_are_materialized_once(self):
+        calls = []
+
+        class Backend:
+            _node_cache = None
+
+        backend = make_backend()
+
+        class FakeGraphBackend:
+            async def get_all_nodes(self):
+                calls.append(1)
+                return []
+
+        class FakeIndex:
+            graph_backend = FakeGraphBackend()
+
+        class FakeGraph:
+            index = FakeIndex()
+
+        backend.graph = FakeGraph()
+        backend._llm = object()
+        backend._embedder = object()
+
+        await backend._nodes()
+        await backend._nodes()
+
+        assert calls == [1]

@@ -152,6 +152,15 @@ class TooManyRequestsError(RaguServiceError):
         return {"Retry-After": "5"}
 
 
+class NotFoundError(RaguServiceError):
+    """
+    No such entity, relation, community or chunk in this graph (404).
+    """
+
+    code = "NOT_FOUND"
+    status_code = 404
+
+
 class GraphNotFoundError(RaguServiceError):
     """
     No graph by that name is configured (404).

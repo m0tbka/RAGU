@@ -34,6 +34,8 @@ from ragu.api.backends.base import (
 from ragu.api.config import GraphSpec, ServiceSettings
 from ragu.api.errors import (
     BackendExecutionError,
+    InvalidRequestError,
+    NotFoundError,
     RaguServiceError,
     ServiceNotReadyError,
 )
@@ -170,6 +172,8 @@ class RaguBackend(SearchBackend):
         # built lazily for another language does not pick up whatever the
         # singleton holds by then.
         self._engine_kwargs: dict[str, Any] = {}
+        self._node_cache: list[Any] | None = None
+        self._edge_cache: list[Any] | None = None
         self.graph: KnowledgeGraph | None = None
         self._engines: dict[
             tuple[SearchMode, str, bool], BaseEngine[Any, Any]
@@ -345,6 +349,7 @@ class RaguBackend(SearchBackend):
                     Settings.storage_folder = self.spec.storage_folder
                     Settings.language = self.language
                     await graph.build_from_docs(documents)
+                self._drop_graph_cache()
                 self._stats = await self._measure(graph)
             finally:
                 self._building = False
@@ -356,6 +361,202 @@ class RaguBackend(SearchBackend):
             self._stats,
         )
         return {"documents": len(documents), "stats": self._stats.to_response().model_dump()}
+
+    # --- the graph surface ---------------------------------------------------
+
+    async def _nodes(self) -> list[Any]:
+        """
+        Every entity, materialized once and kept.
+
+        ``get_all_nodes`` rebuilds an ``Entity`` per node on each call, so a
+        client paging through a large graph would pay O(n) per page. The list is
+        dropped whenever the graph is written to.
+        """
+        if self._node_cache is None:
+            graph, _, _ = self._require_loaded()
+            self._node_cache = await graph.index.graph_backend.get_all_nodes()
+        return self._node_cache
+
+    async def _edges(self) -> list[Any]:
+        """
+        Every relation, materialized once and kept. See :meth:`_nodes`.
+        """
+        if self._edge_cache is None:
+            graph, _, _ = self._require_loaded()
+            self._edge_cache = await graph.index.graph_backend.get_all_edges()
+        return self._edge_cache
+
+    def _drop_graph_cache(self) -> None:
+        self._node_cache = None
+        self._edge_cache = None
+
+    async def graph_detail(self) -> dict[str, Any]:
+        graph, _, embedder = self._require_loaded()
+        index = graph.index
+        communities = await index.community_kv_storage.all_keys()
+        chunks = await index.chunks_kv_storage.get_by_ids(
+            await index.chunks_kv_storage.all_keys()
+        )
+        documents = {
+            chunk.get("doc_id") if isinstance(chunk, dict) else getattr(chunk, "doc_id", None)
+            for chunk in chunks
+            if chunk is not None
+        }
+        stats = self._stats or GraphStats()
+        return {
+            "entities": stats.entities,
+            "relations": stats.relations,
+            "chunks": stats.chunks,
+            "communities": len(communities),
+            "community_summaries": stats.community_summaries,
+            "documents": len({doc for doc in documents if doc}),
+            "embedding_dim": getattr(embedder, "dim", None),
+        }
+
+    async def list_entities(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        entity_type: str | None = None,
+        search: str | None = None,
+    ) -> tuple[int, list[Any]]:
+        self.require_idle()
+        nodes = await self._nodes()
+        if entity_type:
+            wanted = entity_type.casefold()
+            nodes = [n for n in nodes if (n.entity_type or "").casefold() == wanted]
+        if search:
+            needle = search.casefold()
+            nodes = [n for n in nodes if needle in (n.entity_name or "").casefold()]
+        return len(nodes), nodes[offset : offset + limit]
+
+    async def list_relations(
+        self, *, limit: int, offset: int, min_strength: float | None = None
+    ) -> tuple[int, list[Any]]:
+        self.require_idle()
+        edges = await self._edges()
+        if min_strength is not None:
+            edges = [
+                e for e in edges if float(getattr(e, "relation_strength", 1.0)) >= min_strength
+            ]
+        return len(edges), edges[offset : offset + limit]
+
+    async def neighbors(self, entity_id: str, depth: int, limit: int) -> dict[str, Any]:
+        self.require_idle()
+        graph, _, _ = self._require_loaded()
+        backend = graph.index.graph_backend
+
+        found = await backend.get_nodes([entity_id])
+        if not found or found[0] is None:
+            raise NotFoundError(f"No entity with id '{entity_id}' in this graph.")
+
+        seen = {entity_id: found[0]}
+        frontier = [entity_id]
+        relations: dict[str, Any] = {}
+        truncated = False
+
+        for _ in range(max(depth, 0)):
+            if not frontier:
+                break
+            grouped = await backend.get_all_edges_for_nodes(frontier)
+            next_frontier: list[str] = []
+            for edges in grouped:
+                for edge in edges or []:
+                    relations[edge.id] = edge
+                    for side in (edge.subject_id, edge.object_id):
+                        if side not in seen:
+                            next_frontier.append(side)
+            if not next_frontier:
+                break
+            if len(seen) + len(set(next_frontier)) > limit:
+                truncated = True
+                next_frontier = list(dict.fromkeys(next_frontier))[: limit - len(seen)]
+            fetched = await backend.get_nodes(list(dict.fromkeys(next_frontier)))
+            for node_id, node in zip(dict.fromkeys(next_frontier), fetched):
+                if node is not None:
+                    seen[node_id] = node
+            frontier = [node_id for node_id in dict.fromkeys(next_frontier) if node_id in seen]
+            if truncated:
+                break
+
+        return {
+            "entities": list(seen.values()),
+            "relations": list(relations.values()),
+            "truncated": truncated,
+        }
+
+    async def list_communities(
+        self, *, limit: int, offset: int, level: int | None = None
+    ) -> tuple[int, list[Any]]:
+        self.require_idle()
+        graph, _, _ = self._require_loaded()
+        ids = sorted(await graph.index.community_kv_storage.all_keys())
+        communities = [c for c in await graph.get_communities(ids) if c is not None]
+        if level is not None:
+            communities = [c for c in communities if c.level == level]
+        page = communities[offset : offset + limit]
+        summaries = await graph.index.community_summary_kv_storage.get_by_ids(
+            [c.id for c in page]
+        )
+        return len(communities), list(zip(page, summaries))
+
+    async def get_community(self, community_id: str) -> tuple[Any, Any]:
+        self.require_idle()
+        graph, _, _ = self._require_loaded()
+        found = await graph.get_communities([community_id])
+        if not found or found[0] is None:
+            raise NotFoundError(f"No community with id '{community_id}' in this graph.")
+        summary = await graph.index.community_summary_kv_storage.get_by_id(community_id)
+        return found[0], summary
+
+    async def get_chunk(self, chunk_id: str) -> Any:
+        self.require_idle()
+        graph, _, _ = self._require_loaded()
+        found = await graph.get_chunks([chunk_id])
+        if not found or found[0] is None:
+            raise NotFoundError(f"No chunk with id '{chunk_id}' in this graph.")
+        return found[0]
+
+    async def consistency(self) -> Any:
+        self.require_idle()
+        graph, _, _ = self._require_loaded()
+        return await graph.index.check_consistency()
+
+    async def reindex(self, kind: str) -> dict[str, Any]:
+        """
+        Rebuild communities, descriptions or the whole graph.
+
+        Held under the same write lock as ingestion, and it invalidates the
+        materialized node and edge lists.
+        """
+        graph, _, _ = self._require_loaded()
+        operations = {
+            "community": graph.reindex_community,
+            "descriptions": graph.reindex_descriptions,
+            "graph": graph.reindex_graph,
+        }
+        operation = operations.get(kind)
+        if operation is None:
+            raise InvalidRequestError(
+                f"Unknown reindex '{kind}'. Expected one of {sorted(operations)}."
+            )
+
+        async with self._write_lock:
+            self._building = True
+            try:
+                with isolated_settings():
+                    if self.spec.settings_file:
+                        Settings.load(self.spec.settings_file)
+                    Settings.storage_folder = self.spec.storage_folder
+                    Settings.language = self.language
+                    await operation()
+                self._drop_graph_cache()
+                self._stats = await self._measure(graph)
+            finally:
+                self._building = False
+
+        return {"reindex": kind, "stats": self._stats.to_response().model_dump()}
 
     @staticmethod
     def _env() -> Env:

@@ -8,7 +8,7 @@ any change in the service (see the spec, "Per-route policy").
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, Request, Response
+from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from fastapi.responses import StreamingResponse
 
 from ragu.api.backends.base import (
@@ -34,9 +34,18 @@ from ragu.api.models import (
     BatchSearchItem,
     BatchSearchResponse,
     BuildRequest,
+    ChunkItem,
+    CommunityDetail,
+    CommunityItem,
+    CommunityPage,
+    ConsistencyIssueItem,
+    ConsistencyReportModel,
     EngineReport,
     ErrorBody,
     ErrorResponse,
+    EntityItem,
+    EntityPage,
+    GraphDetail,
     GraphInfo,
     GraphListResponse,
     JobListResponse,
@@ -52,9 +61,14 @@ from ragu.api.models import (
     MixRetrieveRequest,
     MixSearchRequest,
     ModeAvailability,
+    Neighborhood,
     NaiveBatchRequest,
     NaiveRetrieveRequest,
     NaiveSearchRequest,
+    OntologyResponse,
+    PageInfo,
+    RelationItem,
+    RelationPage,
     RetrieveResponse,
     SearchMode,
     SearchResponse,
@@ -776,6 +790,291 @@ async def prometheus_metrics(request: Request) -> Response:
             metrics.set(JOBS, counts.get(state, 0), (("state", state),))
 
     return Response(content=metrics.render(), media_type="text/plain; version=0.0.4")
+
+
+def _entity_item(entity: Any) -> EntityItem:
+    """
+    Render an entity, from either a real ``Entity`` or the stub's mapping.
+    """
+    if isinstance(entity, dict):
+        return EntityItem(**entity)
+    return EntityItem(
+        id=entity.id,
+        name=entity.entity_name,
+        type=entity.entity_type,
+        description=entity.description or "",
+        communities=[
+            str(cluster.get("cluster_id"))
+            for cluster in (getattr(entity, "clusters", None) or [])
+            if cluster.get("cluster_id") is not None
+        ],
+    )
+
+
+def _relation_item(relation: Any) -> RelationItem:
+    if isinstance(relation, dict):
+        return RelationItem(**relation)
+    return RelationItem(
+        id=relation.id,
+        subject_id=relation.subject_id,
+        object_id=relation.object_id,
+        subject_name=relation.subject_name,
+        object_name=relation.object_name,
+        type=relation.relation_type,
+        description=relation.description or "",
+        strength=float(getattr(relation, "relation_strength", 1.0)),
+    )
+
+
+def _community_item(community: Any, summary: Any) -> CommunityItem:
+    if isinstance(community, dict):
+        return CommunityItem(**community, summary=_summary_text(summary))
+    return CommunityItem(
+        id=community.id,
+        level=community.level,
+        cluster_id=community.cluster_id,
+        entity_count=len(community.entities or []),
+        relation_count=len(community.relations or []),
+        summary=_summary_text(summary),
+    )
+
+
+def _summary_text(summary: Any) -> str | None:
+    if summary is None or isinstance(summary, str):
+        return summary
+    if isinstance(summary, dict):
+        return summary.get("summary")
+    return getattr(summary, "summary", None)
+
+
+@router.get(
+    "/v1/graphs/{graph_id}/stats",
+    response_model=GraphDetail,
+    responses=GRAPH_RESPONSES,
+)
+async def graph_stats(request: Request, graph_id: str) -> GraphDetail:
+    """
+    Sizes, embedding dimension and which modes this corpus can serve.
+    """
+    info = _graph_info(request, graph_id)
+    backend = _registry(request).backend(graph_id)
+    detail = await backend.graph_detail() if backend.graph_loaded else {}
+    return GraphDetail(
+        id=graph_id,
+        loaded=info.loaded,
+        language=info.language,
+        accepts_documents=backend.accepts_documents,
+        modes=info.modes,
+        **detail,
+    )
+
+
+@router.get(
+    "/v1/graphs/{graph_id}/entities",
+    response_model=EntityPage,
+    responses=GRAPH_RESPONSES,
+)
+async def list_entities(
+    graph_id: str,
+    backend: SearchBackend = Depends(get_backend),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    type: str | None = Query(default=None, description="Exact entity type"),
+    search: str | None = Query(default=None, description="Substring of the name"),
+) -> EntityPage:
+    total, entities = await backend.list_entities(
+        limit=limit, offset=offset, entity_type=type, search=search
+    )
+    return EntityPage(
+        page=PageInfo(total=total, limit=limit, offset=offset),
+        entities=[_entity_item(entity) for entity in entities],
+    )
+
+
+@router.get(
+    "/v1/graphs/{graph_id}/relations",
+    response_model=RelationPage,
+    responses=GRAPH_RESPONSES,
+)
+async def list_relations(
+    graph_id: str,
+    backend: SearchBackend = Depends(get_backend),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    min_strength: float | None = Query(default=None),
+) -> RelationPage:
+    total, relations = await backend.list_relations(
+        limit=limit, offset=offset, min_strength=min_strength
+    )
+    return RelationPage(
+        page=PageInfo(total=total, limit=limit, offset=offset),
+        relations=[_relation_item(relation) for relation in relations],
+    )
+
+
+@router.get(
+    "/v1/graphs/{graph_id}/entities/{entity_id}/neighbors",
+    response_model=Neighborhood,
+    responses=GRAPH_RESPONSES,
+)
+async def entity_neighbors(
+    graph_id: str,
+    entity_id: str,
+    backend: SearchBackend = Depends(get_backend),
+    depth: int = Query(default=1, ge=1, le=4),
+    limit: int = Query(default=200, ge=1, le=2000),
+) -> Neighborhood:
+    """
+    Everything within ``depth`` hops, for drawing a piece of the graph.
+
+    Coordinates are not returned: the client knows its own viewport and lays the
+    graph out itself.
+    """
+    found = await backend.neighbors(entity_id, depth, limit)
+    return Neighborhood(
+        root=entity_id,
+        depth=depth,
+        entities=[_entity_item(entity) for entity in found["entities"]],
+        relations=[_relation_item(relation) for relation in found["relations"]],
+        truncated=found["truncated"],
+    )
+
+
+@router.get(
+    "/v1/graphs/{graph_id}/communities",
+    response_model=CommunityPage,
+    responses=GRAPH_RESPONSES,
+)
+async def list_communities(
+    graph_id: str,
+    backend: SearchBackend = Depends(get_backend),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    level: int | None = Query(default=None, description="Leiden level"),
+) -> CommunityPage:
+    total, rows = await backend.list_communities(limit=limit, offset=offset, level=level)
+    return CommunityPage(
+        page=PageInfo(total=total, limit=limit, offset=offset),
+        communities=[_community_item(community, summary) for community, summary in rows],
+    )
+
+
+@router.get(
+    "/v1/graphs/{graph_id}/communities/{community_id}",
+    response_model=CommunityDetail,
+    responses=GRAPH_RESPONSES,
+)
+async def get_community(
+    graph_id: str,
+    community_id: str,
+    backend: SearchBackend = Depends(get_backend),
+) -> CommunityDetail:
+    community, summary = await backend.get_community(community_id)
+    item = _community_item(community, summary)
+    members = (
+        {"entities": [], "relations": []}
+        if isinstance(community, dict)
+        else {"entities": community.entities or [], "relations": community.relations or []}
+    )
+    return CommunityDetail(
+        **item.model_dump(),
+        entities=[_entity_item(entity) for entity in members["entities"]],
+        relations=[_relation_item(relation) for relation in members["relations"]],
+    )
+
+
+@router.get(
+    "/v1/graphs/{graph_id}/chunks/{chunk_id}",
+    response_model=ChunkItem,
+    responses=GRAPH_RESPONSES,
+)
+async def get_chunk(
+    graph_id: str,
+    chunk_id: str,
+    backend: SearchBackend = Depends(get_backend),
+) -> ChunkItem:
+    """
+    One source chunk, for tracing an answer back to the corpus.
+    """
+    chunk = await backend.get_chunk(chunk_id)
+    if isinstance(chunk, dict):
+        return ChunkItem(**chunk)
+    return ChunkItem(
+        id=chunk.id,
+        content=chunk.content,
+        doc_id=getattr(chunk, "doc_id", None),
+        chunk_order_idx=getattr(chunk, "chunk_order_idx", None),
+        num_tokens=getattr(chunk, "num_tokens", None),
+    )
+
+
+@router.get(
+    "/v1/graphs/{graph_id}/consistency",
+    response_model=ConsistencyReportModel,
+    responses=GRAPH_RESPONSES,
+)
+async def graph_consistency(
+    graph_id: str,
+    backend: SearchBackend = Depends(get_backend),
+) -> ConsistencyReportModel:
+    """
+    Audit the graph's cross-storage invariants.
+    """
+    report = await backend.consistency()
+    if report is None:
+        return ConsistencyReportModel(consistent=True)
+    return ConsistencyReportModel(
+        consistent=report.is_consistent,
+        issues=[
+            ConsistencyIssueItem(
+                check=issue.check, message=issue.message, details=issue.details
+            )
+            for issue in report.errors
+        ],
+    )
+
+
+@router.post(
+    "/v1/graphs/{graph_id}/reindex/{kind}",
+    response_model=JobResponse,
+    status_code=202,
+    responses=JOB_RESPONSES,
+)
+async def reindex_graph(
+    request: Request,
+    graph_id: str,
+    kind: str,
+    response: Response,
+    backend: SearchBackend = Depends(get_backend),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> JobResponse:
+    """
+    Rebuild communities, descriptions or the whole graph, as a job.
+
+    Reindexing writes into the stores searches read, so it takes the same write
+    lock ingestion does and the graph answers 409 GRAPH_BUSY while it runs.
+    """
+    job = await _jobs(request).submit(
+        "reindex",
+        graph_id,
+        lambda: backend.reindex(kind),
+        idempotency_key=idempotency_key,
+    )
+    response.headers["Location"] = f"/v1/jobs/{job.id}"
+    return _job_response(job)
+
+
+@router.get("/v1/ontology", response_model=OntologyResponse)
+async def ontology() -> OntologyResponse:
+    """
+    The NEREL entity and relation types the extractors work with.
+    """
+    from ragu.triplet import types as ontology_types
+
+    return OntologyResponse(
+        entity_types=list(getattr(ontology_types, "NEREL_ENTITY_TYPES", [])),
+        relation_types=list(getattr(ontology_types, "NEREL_RELATION_TYPES", [])),
+    )
 
 
 # The catalogue path is canonical; the flat one is kept for clients written

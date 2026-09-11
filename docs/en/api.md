@@ -5,14 +5,15 @@
 2. [Running the service](#running-the-service)
 3. [Configuration](#configuration)
 4. [The graph catalogue](#the-graph-catalogue)
-5. [Ingestion](#ingestion)
-6. [Search endpoints](#search-endpoints)
-7. [Operations](#operations)
-8. [Health and readiness](#health-and-readiness)
-9. [Errors](#errors)
-10. [Design decisions](#design-decisions)
-11. [Logging](#logging)
-12. [Current limits](#current-limits)
+5. [The graph surface](#the-graph-surface)
+6. [Ingestion](#ingestion)
+7. [Search endpoints](#search-endpoints)
+8. [Operations](#operations)
+9. [Health and readiness](#health-and-readiness)
+10. [Errors](#errors)
+11. [Design decisions](#design-decisions)
+12. [Logging](#logging)
+13. [Current limits](#current-limits)
 
 ---
 
@@ -153,6 +154,37 @@ settings around the construction, and rolls the singleton back afterwards.
 Engines built later — one per language, on demand — would otherwise pick up
 whatever the singleton holds by then, so the backend captures the token limit
 and tokenizer at load time and passes them explicitly.
+
+## The graph surface
+
+Reads of the structure, for a client that draws the corpus or traces an answer
+back to it.
+
+| Route | |
+|---|---|
+| `GET /v1/graphs/{id}/stats` | sizes, `embedding_dim`, documents, mode availability |
+| `GET /v1/graphs/{id}/entities` | `limit`, `offset`, `type`, `search` (name substring) |
+| `GET /v1/graphs/{id}/relations` | `limit`, `offset`, `min_strength` |
+| `GET /v1/graphs/{id}/entities/{eid}/neighbors` | `depth` (1–4), `limit` |
+| `GET /v1/graphs/{id}/communities` | `limit`, `offset`, `level` |
+| `GET /v1/graphs/{id}/communities/{cid}` | one community with its members |
+| `GET /v1/graphs/{id}/chunks/{cid}` | one source chunk |
+| `GET /v1/graphs/{id}/consistency` | the cross-storage audit |
+| `POST /v1/graphs/{id}/reindex/{kind}` | `community`, `descriptions` or `graph`, as a job |
+| `GET /v1/ontology` | the NEREL entity and relation types |
+
+Neighbourhoods return no coordinates: a client laying the graph out knows its
+own viewport and does the layout itself. A neighbourhood that would exceed
+`limit` nodes comes back with `truncated: true` rather than growing without
+bound.
+
+`get_all_nodes` rebuilds an `Entity` per node on every call, so a client paging
+through a large graph would pay O(n) per page. The entity and relation lists are
+therefore materialized once and kept, and dropped whenever the graph is written
+to — by ingestion or by a reindex.
+
+Reindexing writes into the stores searches read, so it takes the same write lock
+ingestion does: the graph answers `409 GRAPH_BUSY` while it runs.
 
 ## Ingestion
 
@@ -458,6 +490,7 @@ All errors share one envelope:
 | 429 | `TOO_MANY_REQUESTS` | the service is already at its generation ceiling |
 | 413 | `PAYLOAD_TOO_LARGE` | the request body exceeds the limit |
 | 504 | `REQUEST_TIMEOUT` | the request outlived RAGU_API_REQUEST_TIMEOUT |
+| 404 | `NOT_FOUND` | no such entity, community or chunk in this graph |
 | 404 | `GRAPH_NOT_FOUND` | the path names a graph that is not configured |
 | 404 | `JOB_NOT_FOUND` | no job with that id in this process |
 | 409 | `GRAPH_BUSY` | the graph is being built; carries `Retry-After` |
@@ -522,5 +555,6 @@ yourself if you want the same behaviour.
 
 Known gaps, listed so they are not mistaken for oversights:
 
-- **No graph CRUD.** Entities, relations, chunks and communities cannot be
-  read or edited over HTTP.
+- **The graph surface is read-only.** Entities and relations can be listed and
+  walked, not created or edited over HTTP; ingestion and reindexing are the
+  write paths.

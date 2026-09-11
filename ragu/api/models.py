@@ -402,6 +402,138 @@ class JobListResponse(BaseModel):
     jobs: list[JobResponse] = Field(default_factory=list)
 
 
+class PageInfo(BaseModel):
+    """
+    Where a listing sits in the whole.
+    """
+
+    total: int = Field(description="Items matching the filter, before paging")
+    limit: int
+    offset: int
+
+
+class EntityItem(BaseModel):
+    id: str
+    name: str
+    type: str
+    description: str = ""
+    degree: int | None = Field(
+        default=None, description="Relations touching this entity, when counted"
+    )
+    communities: list[str] = Field(
+        default_factory=list, description="Community ids this entity belongs to"
+    )
+
+
+class RelationItem(BaseModel):
+    id: str
+    subject_id: str
+    object_id: str
+    subject_name: str
+    object_name: str
+    type: str
+    description: str = ""
+    strength: float = 1.0
+
+
+class EntityPage(BaseModel):
+    page: PageInfo
+    entities: list[EntityItem] = Field(default_factory=list)
+
+
+class RelationPage(BaseModel):
+    page: PageInfo
+    relations: list[RelationItem] = Field(default_factory=list)
+
+
+class Neighborhood(BaseModel):
+    """
+    One entity and everything within ``depth`` hops of it.
+
+    Positions are not returned: a client laying the graph out knows its own
+    viewport and does the layout itself.
+    """
+
+    root: str
+    depth: int
+    entities: list[EntityItem] = Field(default_factory=list)
+    relations: list[RelationItem] = Field(default_factory=list)
+    truncated: bool = Field(
+        default=False,
+        description="The neighbourhood hit the node ceiling and was cut short",
+    )
+
+
+class CommunityItem(BaseModel):
+    id: str
+    level: int
+    cluster_id: int
+    entity_count: int = 0
+    relation_count: int = 0
+    summary: str | None = None
+
+
+class CommunityPage(BaseModel):
+    page: PageInfo
+    communities: list[CommunityItem] = Field(default_factory=list)
+
+
+class CommunityDetail(CommunityItem):
+    entities: list[EntityItem] = Field(default_factory=list)
+    relations: list[RelationItem] = Field(default_factory=list)
+
+
+class ChunkItem(BaseModel):
+    """
+    One source chunk, for tracing an answer back to the corpus.
+    """
+
+    id: str
+    content: str
+    doc_id: str | None = None
+    chunk_order_idx: int | None = None
+    num_tokens: int | None = None
+
+
+class GraphDetail(BaseModel):
+    """
+    Everything a client needs to describe a corpus in an interface.
+    """
+
+    id: str
+    loaded: bool
+    language: str
+    entities: int = 0
+    relations: int = 0
+    chunks: int = 0
+    communities: int = 0
+    community_summaries: int = 0
+    documents: int = 0
+    embedding_dim: int | None = None
+    accepts_documents: bool = False
+    modes: list["ModeAvailability"] = Field(default_factory=list)
+
+
+class ConsistencyIssueItem(BaseModel):
+    check: str
+    message: str
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class ConsistencyReportModel(BaseModel):
+    consistent: bool
+    issues: list[ConsistencyIssueItem] = Field(default_factory=list)
+
+
+class OntologyResponse(BaseModel):
+    """
+    The entity and relation types the extractors work with.
+    """
+
+    entity_types: list[str] = Field(default_factory=list)
+    relation_types: list[str] = Field(default_factory=list)
+
+
 class ModeAvailability(BaseModel):
     """
     Whether one search mode can run against a graph, and why not when it cannot.
@@ -450,3 +582,6 @@ class HealthResponse(BaseModel):
 
 
 BatchSearchItem.model_rebuild()
+
+
+GraphDetail.model_rebuild()

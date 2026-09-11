@@ -17,6 +17,7 @@ from ragu.api.backends.base import (
     SearchOutcome,
 )
 from ragu.api.config import DEFAULT_GRAPH_ID, GraphSpec, ServiceSettings
+from ragu.api.errors import InvalidRequestError, NotFoundError
 from ragu.api.models import (
     ChildEngineReport,
     EngineReport,
@@ -222,3 +223,91 @@ class StubBackend(SearchBackend):
             RetrieveOutcome(sources=self._sources_for(call), engines=report)
             for _ in call.queries
         ]
+
+    # --- a canned graph surface, so a client can be built without a real one ---
+
+    _ENTITIES = [
+        {"id": "entity_1", "name": "Сенкевич", "type": "PERSON", "description": "stub entity"},
+        {"id": "entity_2", "name": "Польша", "type": "COUNTRY", "description": "stub entity"},
+    ]
+    _RELATIONS = [
+        {
+            "id": "relation_1",
+            "subject_id": "entity_1",
+            "object_id": "entity_2",
+            "subject_name": "Сенкевич",
+            "object_name": "Польша",
+            "type": "born_in",
+            "description": "stub relation",
+            "strength": 1.0,
+        }
+    ]
+
+    async def graph_detail(self) -> dict[str, Any]:
+        stats = self._stats or GraphStats()
+        return {
+            "entities": stats.entities,
+            "relations": stats.relations,
+            "chunks": stats.chunks,
+            "communities": 1,
+            "community_summaries": stats.community_summaries,
+            "documents": 1,
+            "embedding_dim": 8,
+        }
+
+    async def list_entities(
+        self, *, limit, offset, entity_type=None, search=None
+    ) -> tuple[int, list[Any]]:
+        items = self._ENTITIES
+        if entity_type:
+            items = [e for e in items if e["type"].casefold() == entity_type.casefold()]
+        if search:
+            items = [e for e in items if search.casefold() in e["name"].casefold()]
+        return len(items), items[offset : offset + limit]
+
+    async def list_relations(
+        self, *, limit, offset, min_strength=None
+    ) -> tuple[int, list[Any]]:
+        items = self._RELATIONS
+        if min_strength is not None:
+            items = [r for r in items if r["strength"] >= min_strength]
+        return len(items), items[offset : offset + limit]
+
+    async def neighbors(self, entity_id: str, depth: int, limit: int) -> dict[str, Any]:
+        if entity_id not in {e["id"] for e in self._ENTITIES}:
+            raise NotFoundError(f"No entity with id '{entity_id}' in this graph.")
+        return {
+            "entities": self._ENTITIES,
+            "relations": self._RELATIONS,
+            "truncated": False,
+        }
+
+    async def list_communities(
+        self, *, limit, offset, level=None
+    ) -> tuple[int, list[Any]]:
+        items = [({"id": "com-1", "level": 0, "cluster_id": 0}, "stub community summary")]
+        if level is not None:
+            items = [item for item in items if item[0]["level"] == level]
+        return len(items), items[offset : offset + limit]
+
+    async def get_community(self, community_id: str) -> tuple[Any, Any]:
+        if community_id != "com-1":
+            raise NotFoundError(f"No community with id '{community_id}' in this graph.")
+        return {"id": "com-1", "level": 0, "cluster_id": 0}, "stub community summary"
+
+    async def get_chunk(self, chunk_id: str) -> Any:
+        if chunk_id != "chunk_1":
+            raise NotFoundError(f"No chunk with id '{chunk_id}' in this graph.")
+        return {"id": "chunk_1", "content": "stub chunk", "doc_id": "doc-1",
+                "chunk_order_idx": 0, "num_tokens": 2}
+
+    async def consistency(self) -> Any:
+        return None
+
+    async def reindex(self, kind: str) -> dict[str, Any]:
+        if kind not in ("community", "descriptions", "graph"):
+            raise InvalidRequestError(
+                f"Unknown reindex '{kind}'. Expected one of "
+                "['community', 'descriptions', 'graph']."
+            )
+        return {"reindex": kind}
