@@ -268,7 +268,7 @@ def _graph_info(request: Request, graph_id: str) -> GraphInfo:
     )
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get("/health", response_model=HealthResponse, tags=["service"])
 async def health(request: Request) -> HealthResponse:
     """
     Report readiness with a 200 regardless, for probes that read the body.
@@ -276,7 +276,7 @@ async def health(request: Request) -> HealthResponse:
     return _health_of(request)
 
 
-@router.get("/health/live", response_model=HealthResponse)
+@router.get("/health/live", response_model=HealthResponse, tags=["service"])
 async def health_live(request: Request) -> HealthResponse:
     """
     Liveness: the process is up and serving. Always 200 while it can answer.
@@ -287,6 +287,7 @@ async def health_live(request: Request) -> HealthResponse:
 @router.get(
     "/health/ready",
     response_model=HealthResponse,
+    tags=["service"],
     responses={503: {"model": HealthResponse, "description": "Graph not loaded"}},
 )
 async def health_ready(request: Request, response: Response) -> HealthResponse:
@@ -349,7 +350,7 @@ def _retrieved(call: SearchCall, outcome: RetrieveOutcome) -> RetrieveResponse:
 GRAPH_RESPONSES = {404: {"model": ErrorResponse, "description": "No such graph"}}
 
 
-@router.get("/v1/graphs", response_model=GraphListResponse)
+@router.get("/v1/graphs", response_model=GraphListResponse, tags=["graphs"])
 async def list_graphs(request: Request) -> GraphListResponse:
     """
     Every graph this service serves, with its sizes and available modes.
@@ -364,7 +365,10 @@ async def list_graphs(request: Request) -> GraphListResponse:
 
 
 @router.get(
-    "/v1/graphs/{graph_id}", response_model=GraphInfo, responses=GRAPH_RESPONSES
+    "/v1/graphs/{graph_id}",
+    response_model=GraphInfo,
+    responses=GRAPH_RESPONSES,
+    tags=["graphs"],
 )
 async def get_graph(request: Request, graph_id: str) -> GraphInfo:
     return _graph_info(request, graph_id)
@@ -374,6 +378,7 @@ async def get_graph(request: Request, graph_id: str) -> GraphInfo:
     "/v1/graphs/{graph_id}/capabilities",
     response_model=list[ModeAvailability],
     responses=GRAPH_RESPONSES,
+    tags=["graphs"],
 )
 async def graph_capabilities(request: Request, graph_id: str) -> list[ModeAvailability]:
     """
@@ -696,6 +701,7 @@ def _jobs(request: Request) -> JobManager:
     response_model=JobResponse,
     status_code=202,
     responses=JOB_RESPONSES,
+    tags=["jobs"],
 )
 async def add_documents(
     request: Request,
@@ -737,7 +743,7 @@ async def add_documents(
     return _job_response(job)
 
 
-@router.get("/v1/jobs", response_model=JobListResponse)
+@router.get("/v1/jobs", response_model=JobListResponse, tags=["jobs"])
 async def list_jobs(request: Request, graph_id: str | None = None) -> JobListResponse:
     """
     Every job this process knows about, newest first.
@@ -746,7 +752,12 @@ async def list_jobs(request: Request, graph_id: str | None = None) -> JobListRes
     return JobListResponse(jobs=[_job_response(job) for job in jobs])
 
 
-@router.get("/v1/jobs/{job_id}", response_model=JobResponse, responses=JOB_RESPONSES)
+@router.get(
+    "/v1/jobs/{job_id}",
+    response_model=JobResponse,
+    responses=JOB_RESPONSES,
+    tags=["jobs"],
+)
 async def get_job(request: Request, job_id: str) -> JobResponse:
     job = await _jobs(request).store.get(job_id)
     if job is None:
@@ -754,7 +765,12 @@ async def get_job(request: Request, job_id: str) -> JobResponse:
     return _job_response(job)
 
 
-@router.delete("/v1/jobs/{job_id}", response_model=JobResponse, responses=JOB_RESPONSES)
+@router.delete(
+    "/v1/jobs/{job_id}",
+    response_model=JobResponse,
+    responses=JOB_RESPONSES,
+    tags=["jobs"],
+)
 async def cancel_job(request: Request, job_id: str) -> JobResponse:
     """
     Ask a running job to stop. A finished job is returned unchanged.
@@ -765,7 +781,7 @@ async def cancel_job(request: Request, job_id: str) -> JobResponse:
     return _job_response(job)
 
 
-@router.get("/metrics", include_in_schema=False)
+@router.get("/metrics", include_in_schema=False, tags=["service"])
 async def prometheus_metrics(request: Request) -> Response:
     """
     Everything this process has counted, in Prometheus text format.
@@ -851,6 +867,7 @@ def _summary_text(summary: Any) -> str | None:
     "/v1/graphs/{graph_id}/stats",
     response_model=GraphDetail,
     responses=GRAPH_RESPONSES,
+    tags=["graphs"],
 )
 async def graph_stats(request: Request, graph_id: str) -> GraphDetail:
     """
@@ -873,6 +890,7 @@ async def graph_stats(request: Request, graph_id: str) -> GraphDetail:
     "/v1/graphs/{graph_id}/entities",
     response_model=EntityPage,
     responses=GRAPH_RESPONSES,
+    tags=["graphs"],
 )
 async def list_entities(
     graph_id: str,
@@ -895,6 +913,7 @@ async def list_entities(
     "/v1/graphs/{graph_id}/relations",
     response_model=RelationPage,
     responses=GRAPH_RESPONSES,
+    tags=["graphs"],
 )
 async def list_relations(
     graph_id: str,
@@ -916,6 +935,7 @@ async def list_relations(
     "/v1/graphs/{graph_id}/entities/{entity_id}/neighbors",
     response_model=Neighborhood,
     responses=GRAPH_RESPONSES,
+    tags=["graphs"],
 )
 async def entity_neighbors(
     graph_id: str,
@@ -944,6 +964,7 @@ async def entity_neighbors(
     "/v1/graphs/{graph_id}/communities",
     response_model=CommunityPage,
     responses=GRAPH_RESPONSES,
+    tags=["graphs"],
 )
 async def list_communities(
     graph_id: str,
@@ -963,6 +984,7 @@ async def list_communities(
     "/v1/graphs/{graph_id}/communities/{community_id}",
     response_model=CommunityDetail,
     responses=GRAPH_RESPONSES,
+    tags=["graphs"],
 )
 async def get_community(
     graph_id: str,
@@ -987,6 +1009,7 @@ async def get_community(
     "/v1/graphs/{graph_id}/chunks/{chunk_id}",
     response_model=ChunkItem,
     responses=GRAPH_RESPONSES,
+    tags=["graphs"],
 )
 async def get_chunk(
     graph_id: str,
@@ -1012,6 +1035,7 @@ async def get_chunk(
     "/v1/graphs/{graph_id}/consistency",
     response_model=ConsistencyReportModel,
     responses=GRAPH_RESPONSES,
+    tags=["graphs"],
 )
 async def graph_consistency(
     graph_id: str,
@@ -1039,6 +1063,7 @@ async def graph_consistency(
     response_model=JobResponse,
     status_code=202,
     responses=JOB_RESPONSES,
+    tags=["jobs"],
 )
 async def reindex_graph(
     request: Request,
@@ -1064,7 +1089,7 @@ async def reindex_graph(
     return _job_response(job)
 
 
-@router.get("/v1/ontology", response_model=OntologyResponse)
+@router.get("/v1/ontology", response_model=OntologyResponse, tags=["service"])
 async def ontology() -> OntologyResponse:
     """
     The NEREL entity and relation types the extractors work with.

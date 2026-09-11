@@ -30,6 +30,13 @@ from ragu.common.logger import logger
 
 # Returned instead of the exception text: engine and LLM-client errors routinely
 # quote the endpoint URL and parts of the request body.
+OPENAPI_TAGS = [
+    {"name": "search", "description": "Answering questions against a graph."},
+    {"name": "graphs", "description": "The catalogue, and reads of graph structure."},
+    {"name": "jobs", "description": "Ingestion and reindexing, which run too long for a request."},
+    {"name": "service", "description": "Probes, metrics and the ontology."},
+]
+
 UNHANDLED_ERROR_MESSAGE = (
     "The service failed to handle this request. See the service log for details."
 )
@@ -82,9 +89,19 @@ def create_app(
         await registry.shutdown()
 
     app = FastAPI(
-        title="RAGU Search Service",
-        description="Graph-RAG search over a prebuilt knowledge graph: global, local and naive modes.",
-        version="0.1.0",
+        title="RAGU Service",
+        description=(
+            "Graph-RAG over one or more knowledge graphs.\n\n"
+            "Four search modes — `global`, `local`, `naive`, `mix` — each in four "
+            "shapes: an answer, retrieval without generation, a batch, and a "
+            "Server-Sent Events stream. Graphs are addressed by name under "
+            "`/v1/graphs/{graph_id}`; the flat `/v1/search/...` paths address the "
+            "default graph and are kept for older clients.\n\n"
+            "Every response reports what actually ran (`engines`) and what it cost "
+            "(`usage`). Errors share one envelope and carry `request_id`."
+        ),
+        version="0.2.0",
+        openapi_tags=OPENAPI_TAGS,
         lifespan=lifespan,
     )
 

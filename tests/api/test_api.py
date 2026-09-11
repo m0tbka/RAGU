@@ -2523,3 +2523,237 @@ class TestGraphCacheInvalidation:
         await backend._nodes()
 
         assert calls == [1]
+
+
+class LifespanRunner:
+    """Runs an app's lifespan around a block, without a TestClient."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __aenter__(self):
+        from contextlib import AsyncExitStack
+
+        self._stack = AsyncExitStack()
+        await self._stack.enter_async_context(
+            self.app.router.lifespan_context(self.app)
+        )
+        return self
+
+    async def __aexit__(self, *exc):
+        await self._stack.aclose()
+
+
+def asgi_client(app, **kwargs):
+    """A RaguClient driving an app in-process, with no socket in between."""
+    import httpx
+
+    from ragu.api.client import RaguClient
+
+    kwargs.setdefault("graph", "default")
+    return RaguClient(
+        "http://service",
+        transport=httpx.ASGITransport(app=app),
+        **kwargs,
+    )
+
+
+class TestClientLibrary:
+    """Consumers should not each hand-roll the same calls and the same parsing."""
+
+    async def test_the_client_covers_the_search_shapes(self):
+        app = create_app(ServiceSettings(backend="stub"))
+        async with LifespanRunner(app):
+            async with asgi_client(app) as client:
+                answer = await client.search("naive", "q", params={"top_k": 2})
+                context = await client.retrieve("naive", "q")
+                batch = await client.batch("naive", ["a", "b"])
+
+        assert answer.answer.startswith("[stub naive]")
+        assert answer.engines.requested == "naive"
+        assert answer.usage is not None
+        assert len(context.sources) > 0
+        assert [item.query for item in batch.results] == ["a", "b"]
+
+    async def test_the_client_streams(self):
+        app = create_app(ServiceSettings(backend="stub"))
+        async with LifespanRunner(app):
+            async with asgi_client(app) as client:
+                events = [name async for name, _ in client.stream("naive", "hello")]
+
+        assert events[0] == "meta"
+        assert events[-1] == "done"
+
+    async def test_the_client_reads_the_catalogue_and_the_graph(self):
+        app = create_app(ServiceSettings(backend="stub"))
+        async with LifespanRunner(app):
+            async with asgi_client(app) as client:
+                catalogue = await client.graphs()
+                stats = await client.stats()
+                modes = await client.capabilities()
+                entities = await client.entities(limit=1)
+                chunk = await client.chunk("chunk_1")
+                ontology = await client.ontology()
+
+        assert catalogue.default == "default"
+        assert stats.embedding_dim == 8
+        assert all(mode.available for mode in modes)
+        assert entities.page.total == 2
+        assert chunk.content == "stub chunk"
+        assert ontology.entity_types
+
+    async def test_an_error_envelope_becomes_a_typed_exception(self):
+        # A caller branches on `code`, not on the text of a message.
+        from ragu.api.client import RaguApiError
+
+        settings = ServiceSettings(
+            backend="stub", stub_missing_capabilities="entity_graph"
+        )
+        app = create_app(settings)
+        async with LifespanRunner(app):
+            async with asgi_client(app) as client:
+                with pytest.raises(RaguApiError) as failure:
+                    await client.search("local", "q")
+
+        assert failure.value.status_code == 409
+        assert failure.value.code == "CAPABILITY_UNAVAILABLE"
+        assert failure.value.missing_capability == "entity_graph"
+        assert failure.value.request_id
+
+    async def test_the_client_sends_its_key(self):
+        from ragu.api.client import RaguApiError
+
+        app = create_app(ServiceSettings(backend="stub", api_keys="secret"))
+        async with LifespanRunner(app):
+            async with asgi_client(app) as anonymous:
+                with pytest.raises(RaguApiError) as failure:
+                    await anonymous.search("naive", "q")
+            async with asgi_client(app, api_key="secret") as authorised:
+                answer = await authorised.search("naive", "q")
+
+        assert failure.value.status_code == 401
+        assert answer.answer
+
+    async def test_the_client_drives_ingestion_and_jobs(self):
+        app = create_app(
+            ServiceSettings(
+                backend="stub",
+                graphs=[
+                    {"id": "corpus", "storage_folder": "a", "build": {"enabled": True}}
+                ],
+            )
+        )
+        async with LifespanRunner(app):
+            async with asgi_client(app, graph="corpus") as client:
+                job = await client.add_documents(["a"], idempotency_key="k1")
+                again = await client.add_documents(["a"], idempotency_key="k1")
+                listed = await client.jobs()
+                fetched = await client.job(job.id)
+
+        assert job.id == again.id
+        assert len(listed.jobs) == 1
+        assert fetched.kind == "build"
+
+
+class TestBackendContract:
+    """The stub exists so clients can be built without a graph.
+
+    That only holds if it answers in the same shape the real backend does, and
+    nothing checked it until now.
+    """
+
+    def real_backend(self):
+        backend = make_backend()
+        backend.graph = object()
+        backend._llm = object()
+        backend._embedder = object()
+        backend._stats = GraphStats(
+            entities=1, relations=1, chunks=1, community_summaries=1
+        )
+
+        class FakeEngine:
+            def __init__(self, mode, language, rerank=True):
+                self.llm = object()
+
+            async def batch_query(self, queries, params=None):
+                return [
+                    SearchEngineResponse(
+                        query=query,
+                        response="ответ",
+                        retrieval=make_retrieval("text"),
+                    )
+                    for query in queries
+                ]
+
+            async def batch_search(self, queries, params=None):
+                return [make_retrieval("text") for _ in queries]
+
+        backend._build_engine = FakeEngine
+        return backend
+
+    def stub_backend(self):
+        from ragu.api.backends.stub import StubBackend
+
+        backend = StubBackend(ServiceSettings(backend="stub"))
+        backend._stats = backend._simulated_stats()
+        return backend
+
+    @pytest.fixture(params=["stub", "ragu"])
+    def backend(self, request):
+        return self.stub_backend() if request.param == "stub" else self.real_backend()
+
+    async def test_search_answers_in_one_shape(self, backend):
+        outcomes = await backend.search(SearchCall(mode="naive", queries=("q",)))
+
+        assert len(outcomes) == 1
+        outcome = outcomes[0]
+        assert isinstance(outcome.answer, str) and outcome.answer
+        assert outcome.sources and outcome.sources[0].type == "chunk"
+        assert outcome.engines is not None
+        assert outcome.engines.requested == "naive"
+
+    async def test_retrieve_answers_in_one_shape(self, backend):
+        outcomes = await backend.retrieve(SearchCall(mode="naive", queries=("q",)))
+
+        assert len(outcomes) == 1
+        assert outcomes[0].sources
+        assert outcomes[0].engines is not None
+
+    async def test_a_batch_is_aligned_with_its_queries(self, backend):
+        outcomes = await backend.search(
+            SearchCall(mode="naive", queries=("a", "b", "c"))
+        )
+
+        assert len(outcomes) == 3
+
+    async def test_both_refuse_a_mode_the_graph_cannot_serve(self, backend):
+        from ragu.api.errors import CapabilityUnavailableError
+
+        backend._stats = GraphStats(chunks=1)
+
+        with pytest.raises(CapabilityUnavailableError) as failure:
+            await backend.search(SearchCall(mode="local", queries=("q",)))
+        assert failure.value.missing_capability == "entity_graph"
+
+    async def test_both_expose_the_same_capability_map(self, backend):
+        assert set(backend.capabilities()) == {"global", "local", "naive", "mix"}
+
+    async def test_both_page_entities_the_same_way(self, backend):
+        # The stub answers from a canned graph, the real one from the loaded
+        # one; the shape of the answer is what has to match.
+        class FakeGraphBackend:
+            async def get_all_nodes(self):
+                return []
+
+        class FakeIndex:
+            graph_backend = FakeGraphBackend()
+
+        class FakeGraph:
+            index = FakeIndex()
+
+        if type(backend).__name__ == "RaguBackend":
+            backend.graph = FakeGraph()
+
+        total, entities = await backend.list_entities(limit=10, offset=0)
+        assert isinstance(total, int)
+        assert isinstance(entities, list)

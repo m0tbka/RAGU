@@ -8,12 +8,13 @@
 5. [Поверхность графа](#поверхность-графа)
 6. [Ingestion](#ingestion)
 7. [Эндпоинты поиска](#эндпоинты-поиска)
-8. [Эксплуатация](#эксплуатация)
-9. [Health и readiness](#health-и-readiness)
-10. [Ошибки](#ошибки)
-11. [Проектные решения](#проектные-решения)
-12. [Логирование](#логирование)
-13. [Текущие ограничения](#текущие-ограничения)
+8. [Python-клиент](#python-клиент)
+9. [Эксплуатация](#эксплуатация)
+10. [Health и readiness](#health-и-readiness)
+11. [Ошибки](#ошибки)
+12. [Проектные решения](#проектные-решения)
+13. [Логирование](#логирование)
+14. [Текущие ограничения](#текущие-ограничения)
 
 ---
 
@@ -383,6 +384,41 @@ Ingestion выключен по умолчанию. Граф принимает 
 упавший дочерний движок, поэтому без этого «граф и чанки» было бы неотличимо от
 «только чанки». `degraded` истинно, когда какой-то дочерний движок не внёс
 вклад.
+
+## Python-клиент
+
+`ragu.api.client.RaguClient` оборачивает сервис, чтобы потребители не писали
+каждый свои HTTP-вызовы и свой разбор конверта, расходясь с контрактом по одной
+правке за раз. Он возвращает собственные модели ответов сервиса, поэтому
+изменение схемы — ошибка типов, а не сюрприз в рантайме.
+
+```python
+from ragu.api.client import RaguApiError, RaguClient
+
+async with RaguClient("http://localhost:8020", api_key=KEY, graph="books") as ragu:
+    if not await ragu.ready():
+        ...
+
+    modes = await ragu.capabilities()          # погасить то, чего корпус не умеет
+    answer = await ragu.search("local", "Кто написал роман?", language="russian")
+    print(answer.answer, answer.usage.total_tokens, answer.engines.degraded)
+
+    async for event, data in ragu.stream("naive", "..."):
+        if event == "delta":
+            print(data["text"], end="")
+
+    try:
+        await ragu.search("global", "...")
+    except RaguApiError as error:
+        if error.code == "CAPABILITY_UNAVAILABLE":
+            ...                                 # сменить режим, а не парсить текст
+```
+
+`RaguApiError` несёт `code`, `mode`, `missing_capability` и `request_id`, поэтому
+вызывающий ветвится по коду, а не по формулировке сообщения.
+
+`httpx` импортируется лениво — он относится к extra `test`, а самому сервису не
+нужен.
 
 ## Эксплуатация
 

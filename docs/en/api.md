@@ -8,12 +8,13 @@
 5. [The graph surface](#the-graph-surface)
 6. [Ingestion](#ingestion)
 7. [Search endpoints](#search-endpoints)
-8. [Operations](#operations)
-9. [Health and readiness](#health-and-readiness)
-10. [Errors](#errors)
-11. [Design decisions](#design-decisions)
-12. [Logging](#logging)
-13. [Current limits](#current-limits)
+8. [The Python client](#the-python-client)
+9. [Operations](#operations)
+10. [Health and readiness](#health-and-readiness)
+11. [Errors](#errors)
+12. [Design decisions](#design-decisions)
+13. [Logging](#logging)
+14. [Current limits](#current-limits)
 
 ---
 
@@ -381,6 +382,41 @@ Every response carries `engines`:
 `MixSearchEngine` runs with `allow_partial_failures=True` and drops a child that
 raises, so without this "graph and chunks" would be indistinguishable from
 "chunks only". `degraded` is true whenever some child did not contribute.
+
+## The Python client
+
+`ragu.api.client.RaguClient` wraps the service so consumers do not each
+hand-roll the same calls and the same envelope parsing, and then drift from the
+contract one fix at a time. It returns the service's own response models, so a
+schema change is a type error rather than a runtime surprise.
+
+```python
+from ragu.api.client import RaguApiError, RaguClient
+
+async with RaguClient("http://localhost:8020", api_key=KEY, graph="books") as ragu:
+    if not await ragu.ready():
+        ...
+
+    modes = await ragu.capabilities()          # grey out what this corpus cannot do
+    answer = await ragu.search("local", "Кто написал роман?", language="russian")
+    print(answer.answer, answer.usage.total_tokens, answer.engines.degraded)
+
+    async for event, data in ragu.stream("naive", "..."):
+        if event == "delta":
+            print(data["text"], end="")
+
+    try:
+        await ragu.search("global", "...")
+    except RaguApiError as error:
+        if error.code == "CAPABILITY_UNAVAILABLE":
+            ...                                 # switch modes, do not parse text
+```
+
+`RaguApiError` carries `code`, `mode`, `missing_capability` and `request_id`, so
+a caller branches on the code rather than on the wording of a message.
+
+`httpx` is imported lazily — it belongs to the test extra, and the service
+itself does not need it.
 
 ## Operations
 

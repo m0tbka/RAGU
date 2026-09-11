@@ -63,7 +63,17 @@ models.py    request/response schemas; the request models embed the engines'
              own parameter dataclasses
 mapping.py   engine results → wire schema, dispatched on the concrete result types
 errors.py    RaguServiceError subclasses; every one renders through ErrorResponse
-config.py    ServiceSettings — the RAGU_API_* environment contract
+config.py    ServiceSettings and GraphSpec — the RAGU_API_* environment contract
+client.py    typed httpx client; returns the models above, raises RaguApiError
+registry.py  GraphRegistry: one backend per configured graph, built one at a time
+jobs.py      JobManager over a JobStore interface, for work too long for a request
+usage.py     CountingLLM: per-request LLM calls and tokens, by stage
+reranking.py ForgivingScorer: a reranker outage costs ranking, not the answer
+metrics.py   Prometheus text exposition, no dependency
+middleware.py  request id, auth, body limit, metrics, admission
+auth.py      API-key check
+request_context.py  the request id, kept apart so errors and middleware do not
+             import each other
 logging_setup.py  intercepts stdlib logging (uvicorn, httpx) into loguru, so the
              process has one sink; only `python -m ragu.api` installs it
 backends/
@@ -78,10 +88,13 @@ backends/
 
 Three couplings worth knowing before changing anything here:
 
-- **`Settings` is a process-global singleton.** `RaguBackend.startup` assigns
-  `Settings.storage_folder` / `Settings.language` on it, and `Index` reads the
-  storage folder in its constructor. One process therefore serves exactly one
-  graph.
+- **`Settings` is a process-global singleton, and the registry works around
+  it.** Every per-graph value is read inside the constructors that run while
+  that graph is built, so `GraphRegistry` builds graphs one at a time with
+  `isolated_settings()` and rolls the singleton back after each. Engines built
+  lazily afterwards would pick up whatever the singleton holds by then, so
+  `RaguBackend` captures the context limit and tokenizer at load time and passes
+  them explicitly.
 - **`Index.__init__` calls `Settings.init_storage_folder()`**, which *creates*
   the folder when missing. `RaguBackend._require_storage_folder` refuses a
   missing or empty folder before that happens; do not bypass it, or a typo in
@@ -96,8 +109,8 @@ Three couplings worth knowing before changing anything here:
 1. Add the mode to `SearchMode` (`models.py`) and a request model beside the
    existing ones.
 2. Add its `ModeRequirement` to `MODE_REQUIREMENTS` (`backends/base.py`) — the
-   capability name and both messages — and teach `GraphStats.supports` which
-   store it reads.
+   capabilities it `requires` and both messages. `GraphStats.missing_for` reads
+   them; nothing else needs teaching.
 3. Register the engine's result type in `mapping.py` with
    `@_sources_from_result.register`. Without it the mode still works, but its
    retrieval degrades to a single `to_text()` source.
