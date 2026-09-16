@@ -52,5 +52,12 @@ def authorize(request: Request, settings: ServiceSettings) -> None:
             "This service requires an API key. Send it as 'Authorization: Bearer "
             "<key>' or 'X-API-Key: <key>'."
         )
-    if not any(hmac.compare_digest(offered, key) for key in accepted):
+    # Compared as bytes: headers arrive latin-1 decoded, and compare_digest
+    # refuses a str carrying anything above ASCII, which would turn a junk key
+    # into an unhandled 500 instead of a 401.
+    presented = offered.encode("utf-8", "surrogateescape")
+    if not any(
+        hmac.compare_digest(presented, key.encode("utf-8", "surrogateescape"))
+        for key in accepted
+    ):
         raise UnauthorizedError("The API key presented is not accepted.")

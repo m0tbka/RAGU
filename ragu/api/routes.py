@@ -34,6 +34,7 @@ from ragu.api.models import (
     BatchSearchItem,
     BatchSearchResponse,
     BuildRequest,
+    ChildEngineReport,
     ChunkItem,
     CommunityDetail,
     CommunityItem,
@@ -534,13 +535,51 @@ async def _batched(
                 )
             )
 
-    engines = outcomes[0].engines if outcomes else None
     return BatchSearchResponse(
         mode=mode,
         usage=_usage_model(),
         used_query_plan=call.use_query_plan,
-        engines=engines or EngineReport(requested=mode, used="unknown"),
+        engines=_merged_report(mode, outcomes),
         results=results,
+    )
+
+
+def _merged_report(mode: SearchMode, outcomes: list[SearchOutcome]) -> EngineReport:
+    """
+    Fold every query's engine report into one for the batch.
+
+    Reporting only the first query's would hide the case that matters: a batch
+    where most queries ran clean and one lost a child engine or its reranker.
+    Degradation is therefore the union over the batch, not a sample of it.
+
+    :param mode: Mode the batch asked for.
+    :param outcomes: One outcome per query, in request order.
+    :return: The report for the batch as a whole.
+    """
+    reports = [outcome.engines for outcome in outcomes if outcome.engines]
+    if not reports:
+        return EngineReport(requested=mode, used="unknown")
+
+    children: dict[tuple[str, str | None], ChildEngineReport] = {}
+    for report in reports:
+        for child in report.children:
+            # A child that failed for any query is reported as failed for the
+            # batch; the first failure carries the reason.
+            key = (child.engine, child.mode)
+            kept = children.get(key)
+            if kept is None or (kept.ok and not child.ok):
+                children[key] = child
+
+    return EngineReport(
+        requested=mode,
+        used=reports[0].used,
+        query_plan=any(report.query_plan for report in reports),
+        degraded=any(report.degraded for report in reports),
+        children=list(children.values()),
+        reranked=any(report.reranked for report in reports),
+        rerank_error=next(
+            (report.rerank_error for report in reports if report.rerank_error), None
+        ),
     )
 
 

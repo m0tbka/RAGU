@@ -5,7 +5,7 @@ Adapter over the RAGU engines.
 import asyncio
 import os
 from collections.abc import AsyncIterator, Iterator
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from typing import Any, get_type_hints
 
 from ragu import (
@@ -48,9 +48,7 @@ from ragu.models.embedder import Embedder
 from ragu.models.llm import LLM
 from ragu.models.scorer import Scorer
 from ragu.search_engine.base_engine import BaseEngine
-from ragu.search_engine.global_search import GlobalSearchParams
 from ragu.search_engine.local_search import LocalParams
-from ragu.search_engine.mix_search import MixQueryParams
 from ragu.search_engine.naive_search import NaiveSearchParams
 from ragu.search_engine.query_plan import QueryPlanEngine
 
@@ -96,6 +94,29 @@ def isolated_settings() -> Iterator[None]:
         for name, value in snapshot.items():
             setattr(Settings, name, value)
         Settings.storage_folder = storage_folder
+
+
+# Snapshotting is only isolation if the blocks do not overlap, and there is one
+# singleton for the whole process. The registry serializes startup, but a build
+# and a reindex are background jobs against whatever graph a client names: two
+# of those on different graphs would each snapshot the other's folder, build
+# into it, and leave the singleton restored to the wrong one.
+_settings_lock = asyncio.Lock()
+
+
+@asynccontextmanager
+async def exclusive_settings() -> AsyncIterator[None]:
+    """
+    Hold the ``Settings`` singleton for one graph, then roll it back.
+
+    The async counterpart of :func:`isolated_settings`, and the one every path
+    that can run concurrently with another graph's must use. Blocks take minutes
+    to hours, so a waiting job waits that long — which is the point: they cannot
+    safely run at the same time.
+    """
+    async with _settings_lock:
+        with isolated_settings():
+            yield
 
 
 class RecordingEngine:
@@ -212,7 +233,7 @@ class RaguBackend(SearchBackend):
             )
             self._clients.append(embedder_client)
 
-        with isolated_settings():
+        async with exclusive_settings():
             if spec.settings_file:
                 Settings.load(spec.settings_file)
             Settings.storage_folder = spec.storage_folder
@@ -343,7 +364,7 @@ class RaguBackend(SearchBackend):
         async with self._write_lock:
             self._building = True
             try:
-                with isolated_settings():
+                async with exclusive_settings():
                     if self.spec.settings_file:
                         Settings.load(self.spec.settings_file)
                     Settings.storage_folder = self.spec.storage_folder
@@ -364,27 +385,46 @@ class RaguBackend(SearchBackend):
 
     # --- the graph surface ---------------------------------------------------
 
+    def _worth_caching(self, items: list[Any]) -> bool:
+        """
+        Whether a materialized list is small enough to keep.
+
+        The cache trades memory for paging speed, and on a graph of a few hundred
+        thousand relations that trade is a permanent floor under the process for
+        the benefit of one endpoint. Above the ceiling the list is rebuilt per
+        page instead — slower, but the service survives the request.
+        """
+        limit = self.settings.graph_cache_max_items
+        return limit > 0 and len(items) <= limit
+
     async def _nodes(self) -> list[Any]:
         """
-        Every entity, materialized once and kept.
+        Every entity, materialized once and kept while it fits.
 
         ``get_all_nodes`` rebuilds an ``Entity`` per node on each call, so a
-        client paging through a large graph would pay O(n) per page. The list is
-        dropped whenever the graph is written to.
+        client paging through a graph would otherwise pay O(n) per page. The
+        list is dropped whenever the graph is written to, and not kept at all
+        above ``graph_cache_max_items``.
         """
-        if self._node_cache is None:
-            graph, _, _ = self._require_loaded()
-            self._node_cache = await graph.index.graph_backend.get_all_nodes()
-        return self._node_cache
+        if self._node_cache is not None:
+            return self._node_cache
+        graph, _, _ = self._require_loaded()
+        nodes = await graph.index.graph_backend.get_all_nodes()
+        if self._worth_caching(nodes):
+            self._node_cache = nodes
+        return nodes
 
     async def _edges(self) -> list[Any]:
         """
-        Every relation, materialized once and kept. See :meth:`_nodes`.
+        Every relation, materialized once and kept while it fits. See :meth:`_nodes`.
         """
-        if self._edge_cache is None:
-            graph, _, _ = self._require_loaded()
-            self._edge_cache = await graph.index.graph_backend.get_all_edges()
-        return self._edge_cache
+        if self._edge_cache is not None:
+            return self._edge_cache
+        graph, _, _ = self._require_loaded()
+        edges = await graph.index.graph_backend.get_all_edges()
+        if self._worth_caching(edges):
+            self._edge_cache = edges
+        return edges
 
     def _drop_graph_cache(self) -> None:
         self._node_cache = None
@@ -545,7 +585,7 @@ class RaguBackend(SearchBackend):
         async with self._write_lock:
             self._building = True
             try:
-                with isolated_settings():
+                async with exclusive_settings():
                     if self.spec.settings_file:
                         Settings.load(self.spec.settings_file)
                     Settings.storage_folder = self.spec.storage_folder
@@ -695,14 +735,21 @@ class RaguBackend(SearchBackend):
         :return: The engine for that pair.
         """
         key = (mode, language, rerank)
-        engine = self._engines.get(key)
-        if engine is None:
-            engine = self._build_engine(mode, language, rerank)
-            # A client picks the language, so the cache is bounded: drop the
-            # oldest entry rather than growing without limit.
-            while len(self._engines) >= self.settings.engine_cache_size:
-                self._engines.pop(next(iter(self._engines)))
+        engine = self._engines.pop(key, None)
+        if engine is not None:
+            # Re-inserted, so it sits at the end: a dict keeps insertion order,
+            # which makes "oldest key" mean least-recently-used rather than
+            # first-built. Evicting by build order would drop the
+            # default-language engines warmed at startup — the ones nearly every
+            # request uses — as soon as a second language appeared.
             self._engines[key] = engine
+            return engine
+
+        engine = self._build_engine(mode, language, rerank)
+        # A client picks the language, so the cache is bounded.
+        while len(self._engines) >= self.settings.engine_cache_size:
+            self._engines.pop(next(iter(self._engines)))
+        self._engines[key] = engine
         return engine
 
     def _require_loaded(self) -> tuple[KnowledgeGraph, LLM, Embedder]:
@@ -810,7 +857,7 @@ class RaguBackend(SearchBackend):
                     )
                 if event.delta:
                     yield SearchStreamEvent("delta", {"text": event.delta})
-        except Exception as exc:
+        except Exception:
             logger.opt(exception=True).error("RAGU {} stream failed", call.mode)
             yield SearchStreamEvent(
                 "error",

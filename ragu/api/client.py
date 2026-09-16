@@ -58,6 +58,27 @@ class RaguApiError(RuntimeError):
         super().__init__(f"{status_code} {self.code}: {self.message}")
 
 
+def _envelope(response: Any) -> dict[str, Any]:
+    """
+    The service error envelope carried by a failed response.
+
+    Not every error on the wire comes from this service: a gateway between the
+    two answers with its own HTML, and an error raised inside the middleware
+    stack never reaches the envelope handler. Those still have to arrive as a
+    :class:`RaguApiError`, so the body becomes the message.
+
+    :param response: The failed httpx response, already read.
+    :return: The parsed envelope, or a synthesized one.
+    """
+    try:
+        payload = response.json()
+    except Exception:
+        payload = None
+    if isinstance(payload, dict) and isinstance(payload.get("error"), dict):
+        return payload
+    return {"error": {"code": "UNKNOWN", "message": response.text}}
+
+
 def _httpx() -> Any:
     try:
         import httpx
@@ -119,11 +140,7 @@ class RaguClient:
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         response = await self._client.request(method, path, **kwargs)
         if response.status_code >= 400:
-            try:
-                payload = response.json()
-            except Exception:
-                payload = {"error": {"code": "UNKNOWN", "message": response.text}}
-            raise RaguApiError(response.status_code, payload)
+            raise RaguApiError(response.status_code, _envelope(response))
         return response.json()
 
     async def _get(self, path: str, **params: Any) -> Any:
@@ -216,7 +233,7 @@ class RaguClient:
         ) as response:
             if response.status_code >= 400:
                 await response.aread()
-                raise RaguApiError(response.status_code, response.json())
+                raise RaguApiError(response.status_code, _envelope(response))
             event = "message"
             async for line in response.aiter_lines():
                 if line.startswith("event: "):

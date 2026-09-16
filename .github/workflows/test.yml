@@ -3,8 +3,11 @@ name: Test Package
 on:
   push:
     branches: [ main, dev ]
+  # Long-lived integration branches are merge targets too, and a pull request is
+  # only gated on the branches named here: without them a PR into feature/*
+  # lands with no run at all.
   pull_request:
-    branches: [ main, dev ]
+    branches: [ main, dev, 'feature/**' ]
 
 jobs:
   test:
@@ -39,6 +42,18 @@ jobs:
       - name: Run tests
         run: |
           pytest tests/
+
+      # tests/api/ opens with pytest.importorskip("fastapi"), so a resolution
+      # that drops the extra leaves the whole service suite skipped and the job
+      # green. Same guard as the Neo4j job below, for the same reason.
+      - name: Fail if the service suite silently skipped
+        run: |
+          pytest tests/api -q --no-header --no-cov -p no:cacheprovider | tee /tmp/api-run.txt
+          grep -qE '[0-9]+ passed' /tmp/api-run.txt
+          if grep -qE '[0-9]+ skipped' /tmp/api-run.txt; then
+            echo "::error::tests/api was skipped - the 'api' extra did not install"
+            exit 1
+          fi
 
   # Storage backends that need a server are exercised here. Without this job the
   # Neo4j adapter has no automated coverage at all: its tests skip themselves

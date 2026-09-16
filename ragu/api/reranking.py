@@ -9,6 +9,7 @@ quality rather than the whole answer.
 
 import asyncio
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import Any
 
 from typing_extensions import override
@@ -16,23 +17,40 @@ from typing_extensions import override
 from ragu.common.logger import logger
 from ragu.models.scorer import Scorer
 
+
+@dataclass
+class _Report:
+    """
+    One request's reranking record.
+    """
+
+    failure: str | None = None
+
+
 # Set per request. Engines are cached, so the scorer they hold is shared and
 # cannot carry per-request state itself.
-_rerank_failure: ContextVar[str | None] = ContextVar("rerank_failure", default=None)
+#
+# The variable holds a mutable record rather than the message itself: every
+# engine reaches the scorer through ``asyncio.gather`` (``Scorer.batch_score``,
+# ``LocalSearchEngine._retrieve``), which runs each call in a child task with
+# its own copy of the context. A ``set()`` there is discarded with the task,
+# while a mutation of the shared record is visible to the request that owns it.
+_report: ContextVar["_Report | None"] = ContextVar("rerank_report", default=None)
 
 
 def reset_rerank_report() -> None:
     """
     Start a fresh reranking record for this request.
     """
-    _rerank_failure.set(None)
+    _report.set(_Report())
 
 
 def rerank_failure() -> str | None:
     """
     Why reranking did not happen on this request, if it did not.
     """
-    return _rerank_failure.get()
+    report = _report.get()
+    return report.failure if report is not None else None
 
 
 class ForgivingScorer(Scorer):
@@ -74,6 +92,8 @@ class ForgivingScorer(Scorer):
         """
         Record the failure and keep the retrieval order untouched.
         """
-        _rerank_failure.set(reason)
+        report = _report.get()
+        if report is not None:
+            report.failure = reason
         logger.warning("Reranking skipped: {}", reason)
         return [(index, 0.0) for index in range(len(text_2))]

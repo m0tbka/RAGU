@@ -174,6 +174,14 @@ class ServiceSettings(BaseSettings):
         description="How many (mode, language) engines to keep built. Clients choose "
         "the language, so the cache is bounded.",
     )
+    graph_cache_max_items: int = Field(
+        default=200_000,
+        ge=0,
+        description="Largest entity or relation count the graph-surface routes will "
+        "hold materialized. A graph above this is paged straight from storage "
+        "instead, trading time per page for not pinning the whole graph in memory. "
+        "0 disables the cache entirely.",
+    )
     max_batch_size: int = Field(
         default=50,
         gt=0,

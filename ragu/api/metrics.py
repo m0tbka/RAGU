@@ -10,7 +10,6 @@ Values live in the process, so they reset on restart and are per-replica —
 which is what a Prometheus counter is anyway.
 """
 
-import time
 from collections import defaultdict
 from threading import Lock
 from typing import Iterable
@@ -166,20 +165,3 @@ metrics.describe(
 )
 metrics.describe(GRAPHS, "gauge", "Configured graphs, by whether they loaded.")
 metrics.describe(JOBS, "gauge", "Jobs this process knows about, by state.")
-
-
-class Timer:
-    """
-    Context manager that records how long its block took.
-    """
-
-    def __init__(self, name: str, labels: Labels = ()):
-        self.name = name
-        self.labels = labels
-
-    def __enter__(self) -> "Timer":
-        self._started = time.perf_counter()
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        metrics.observe(self.name, time.perf_counter() - self._started, self.labels)

@@ -114,6 +114,18 @@ class InMemoryJobStore(JobStore):
             oldest = min(finished, key=lambda job: job.created_at)
             finished.remove(oldest)
             self._jobs.pop(oldest.id, None)
+            self._forget_keys(oldest.id)
+
+    def _forget_keys(self, job_id: str) -> None:
+        """
+        Drop the idempotency keys of a job that is no longer held.
+
+        Without this the key map is the leak the job map is not: one entry per
+        submission, kept for the life of the process, pointing at a job that has
+        already been evicted.
+        """
+        for key in [key for key, held in self._keys.items() if held == job_id]:
+            self._keys.pop(key, None)
 
 
 class JobManager:
@@ -124,6 +136,9 @@ class JobManager:
     def __init__(self, store: JobStore | None = None):
         self.store = store or InMemoryJobStore()
         self._tasks: dict[str, asyncio.Task[None]] = {}
+        # Submission is check-then-create across two awaits, so without this a
+        # client retry racing its own first attempt starts the build twice.
+        self._submit_lock = asyncio.Lock()
 
     async def submit(
         self,
@@ -143,18 +158,19 @@ class JobManager:
             not build the same corpus twice.
         :return: The job, already queued or running.
         """
-        if idempotency_key:
-            existing = await self.store.find_by_key(idempotency_key)
-            if existing is not None:
-                return existing
+        async with self._submit_lock:
+            if idempotency_key:
+                existing = await self.store.find_by_key(idempotency_key)
+                if existing is not None:
+                    return existing
 
-        job = Job(id=uuid.uuid4().hex, kind=kind, graph_id=graph_id)
-        await self.store.put(job)
-        if idempotency_key:
-            await self.store.remember_key(idempotency_key, job.id)
+            job = Job(id=uuid.uuid4().hex, kind=kind, graph_id=graph_id)
+            await self.store.put(job)
+            if idempotency_key:
+                await self.store.remember_key(idempotency_key, job.id)
 
-        self._tasks[job.id] = asyncio.create_task(self._run(job, work))
-        return job
+            self._tasks[job.id] = asyncio.create_task(self._run(job, work))
+            return job
 
     async def _run(
         self,

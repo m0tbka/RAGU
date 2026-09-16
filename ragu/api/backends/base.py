@@ -22,9 +22,7 @@ from ragu.api.models import (
     SourceItem,
     SubqueryItem,
 )
-from ragu.search_engine.global_search import GlobalSearchParams
 from ragu.search_engine.local_search import LocalParams
-from ragu.search_engine.mix_search import MixQueryParams
 from ragu.search_engine.naive_search import NaiveSearchParams
 
 # The graph has no store this mode can read at all.

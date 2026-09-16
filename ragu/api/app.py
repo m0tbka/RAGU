@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from ragu import __version__
 from ragu.api.backends.base import SearchBackend
 from ragu.api.errors import RequestTimeoutError
 from ragu.api.jobs import JobManager
@@ -100,7 +101,7 @@ def create_app(
             "Every response reports what actually ran (`engines`) and what it cost "
             "(`usage`). Errors share one envelope and carry `request_id`."
         ),
-        version="0.2.0",
+        version=__version__,
         openapi_tags=OPENAPI_TAGS,
         lifespan=lifespan,
     )

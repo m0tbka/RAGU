@@ -86,7 +86,8 @@ python -m ragu.api --backend ragu --storage-folder ragu_working_dir
 | `RAGU_API_RATE_MAX_SIMULTANEOUS` | — | Максимум одновременных LLM-вызовов |
 | `RAGU_API_LLM_CACHE` | — | Путь к кэшу ответов LLM; без него кэш выключен |
 | `RAGU_API_RERANK_TIMEOUT` | `10` | Сколько секунд ждать реранкер, прежде чем ответить без него |
-| `RAGU_API_ENGINE_CACHE_SIZE` | `32` | Сколько движков (режим, язык) держать построенными |
+| `RAGU_API_ENGINE_CACHE_SIZE` | `32` | Сколько движков (режим, язык) держать построенными; вытесняется дольше всех не использованный |
+| `RAGU_API_GRAPH_CACHE_MAX_ITEMS` | `200000` | Предел сущностей или связей, которые роуты поверхности графа держат в памяти; граф крупнее читается из хранилища постранично, `0` отключает кеш |
 | `RAGU_API_MAX_BATCH_SIZE` | `50` | Максимум запросов, принимаемых маршрутом /batch |
 | `RAGU_API_MAX_TOP_K` | `100` | Потолок для клиентских `top_k` / `rerank_top_k` |
 | `RAGU_API_MIN_CLUSTER_SIZE_FLOOR` | `1` | Нижняя граница для `min_cluster_size` глобального поиска |
@@ -483,7 +484,7 @@ async with RaguClient("http://localhost:8020", api_key=KEY, graph="books") as ra
 
 | Переменная | По умолчанию | |
 |---|---|---|
-| `RAGU_API_MAX_BODY_BYTES` | 32 МиБ | Тело больше — `413` |
+| `RAGU_API_MAX_BODY_BYTES` | 32 МиБ | Тело больше — `413`; байты считаются по мере поступления, поэтому chunked-запрос тоже ограничен |
 | `RAGU_API_REQUEST_TIMEOUT` | `300` | Запрос дольше — `504`; он всё это время держит открытым бюджет LLM |
 | `RAGU_API_CORS_ORIGINS` | — | Через запятую; пусто — CORS-заголовки не отправляются |
 

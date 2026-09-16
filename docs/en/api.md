@@ -87,7 +87,8 @@ Service settings are `RAGU_API_*` environment variables, read by
 | `RAGU_API_RATE_MAX_SIMULTANEOUS` | — | Maximum simultaneous LLM calls |
 | `RAGU_API_LLM_CACHE` | — | Path to the LLM response cache; unset disables caching |
 | `RAGU_API_RERANK_TIMEOUT` | `10` | Seconds to wait for the reranker before answering without it |
-| `RAGU_API_ENGINE_CACHE_SIZE` | `32` | How many (mode, language) engines to keep built |
+| `RAGU_API_ENGINE_CACHE_SIZE` | `32` | How many (mode, language) engines to keep built; least-recently-used is evicted |
+| `RAGU_API_GRAPH_CACHE_MAX_ITEMS` | `200000` | Largest entity or relation count the graph-surface routes hold materialized; a bigger graph is paged from storage instead, and `0` disables the cache |
 | `RAGU_API_MAX_BATCH_SIZE` | `50` | Maximum number of queries a /batch route accepts |
 | `RAGU_API_MAX_TOP_K` | `100` | Ceiling applied to a client-supplied `top_k` / `rerank_top_k` |
 | `RAGU_API_MIN_CLUSTER_SIZE_FLOOR` | `1` | Floor applied to global `min_cluster_size` |
@@ -479,7 +480,7 @@ held open inside this process, one socket and one buffer per waiting request.
 
 | Variable | Default | |
 |---|---|---|
-| `RAGU_API_MAX_BODY_BYTES` | 32 MiB | Larger bodies answer `413` |
+| `RAGU_API_MAX_BODY_BYTES` | 32 MiB | Larger bodies answer `413`, counted as they arrive so a chunked request is bounded too |
 | `RAGU_API_REQUEST_TIMEOUT` | `300` | Longer requests answer `504`; they hold an LLM budget open while they wait |
 | `RAGU_API_CORS_ORIGINS` | — | Comma-separated; empty sends no CORS headers |
 

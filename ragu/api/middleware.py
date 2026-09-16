@@ -12,8 +12,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from starlette.datastructures import Headers
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ragu.api.auth import authorize
 from ragu.api.config import ServiceSettings
@@ -91,32 +93,79 @@ class AuthMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-class BodyLimitMiddleware(BaseHTTPMiddleware):
+class BodyLimitMiddleware:
     """
     Refuse a body larger than the service will read.
 
     Ingestion takes whole documents, so the ceiling is generous; without one it
     is unbounded.
+
+    Raw ASGI rather than ``BaseHTTPMiddleware``, because ``Content-Length`` is
+    only a hint: a chunked request carries none at all, and trusting the header
+    alone leaves the one unbounded read this class exists to prevent. Counting
+    the bytes as they arrive means wrapping ``receive``, which the higher-level
+    base class does not expose.
     """
 
-    def __init__(self, app: FastAPI, max_bytes: int):
-        super().__init__(app)
+    def __init__(self, app: ASGIApp, max_bytes: int):
+        self.app = app
         self.max_bytes = max_bytes
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
-        declared = request.headers.get("content-length")
-        if declared is not None and declared.isdigit():
-            if int(declared) > self.max_bytes:
-                error = PayloadTooLargeError(
-                    f"Request body of {declared} bytes exceeds the limit of "
-                    f"{self.max_bytes}."
-                )
-                return JSONResponse(
-                    status_code=error.status_code, content=error.to_envelope()
-                )
-        return await call_next(request)
+    def _error(self, size: str | int) -> PayloadTooLargeError:
+        return PayloadTooLargeError(
+            f"Request body of {size} bytes exceeds the limit of {self.max_bytes}."
+        )
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        declared = Headers(scope=scope).get("content-length")
+        if declared is not None and declared.isdigit() and int(declared) > self.max_bytes:
+            # Refused before a byte is read, which is the whole point of the
+            # header when a client sends an honest one.
+            error = self._error(declared)
+            response = JSONResponse(
+                status_code=error.status_code, content=error.to_envelope()
+            )
+            await response(scope, receive, send)
+            return
+
+        received = 0
+        over = False
+        answered = False
+
+        async def counting_receive() -> Message:
+            nonlocal received, over
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.max_bytes:
+                    over = True
+                    # End the body here rather than raising: an exception thrown
+                    # into the body parser is caught there and reported as a
+                    # malformed request, which is not what happened. The
+                    # endpoint sees a truncated body, and its answer is replaced
+                    # below with the real reason.
+                    return {"type": "http.request", "body": b"", "more_body": False}
+            return message
+
+        async def guarded_send(message: Message) -> None:
+            nonlocal answered
+            if over and not answered:
+                return
+            answered = True
+            await send(message)
+
+        await self.app(scope, counting_receive, guarded_send)
+
+        if over and not answered:
+            error = self._error(f"more than {self.max_bytes}")
+            response = JSONResponse(
+                status_code=error.status_code, content=error.to_envelope()
+            )
+            await response(scope, receive, send)
 
 
 def _route_template(request: Request) -> str:
@@ -128,15 +177,32 @@ def _route_template(request: Request) -> str:
     rebuilt from the path parameters instead, which also keeps a graph id or a
     job id from opening a time series of its own.
 
+    Substitution matches whole segments and scans from the right. A graph may
+    legally be named ``v1``, ``s`` or ``graphs`` — ``GraphSpec.id`` allows a
+    single character — and a parameter always sits after the literal prefix it
+    follows, so the rightmost matching segment is the parameter's own. Replacing
+    the first occurrence anywhere in the path instead would rewrite the prefix
+    and leave the real id in the label, which is the cardinality this function
+    exists to bound.
+
     :param request: The request being handled.
     :return: A path with ``{name}`` in place of every path parameter.
     """
-    path = request.url.path
-    for name, value in (request.scope.get("path_params") or {}).items():
-        text = str(value)
-        if text:
-            path = path.replace(text, "{" + name + "}", 1)
-    return path
+    params = request.scope.get("path_params") or {}
+    if not params:
+        return request.url.path
+
+    segments = request.url.path.split("/")
+    unmatched = {name: str(value) for name, value in params.items() if str(value)}
+    for index in range(len(segments) - 1, -1, -1):
+        for name, value in unmatched.items():
+            if segments[index] == value:
+                segments[index] = "{" + name + "}"
+                del unmatched[name]
+                break
+        if not unmatched:
+            break
+    return "/".join(segments)
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):
