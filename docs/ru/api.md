@@ -164,11 +164,13 @@ RAGU_API_GRAPHS='[{"id":"books","storage_folder":"/data/books","language":"russi
 | Маршрут | |
 |---|---|
 | `GET /v1/graphs/{id}/stats` | размеры, `embedding_dim`, документы, доступность режимов |
-| `GET /v1/graphs/{id}/entities` | `limit`, `offset`, `type`, `search` (подстрока имени) |
+| `GET /v1/graphs/{id}/entities` | `limit`, `offset`, `type`, `search` (подстрока имени), `community_id`, `sort` (`degree`/`name`), `order`, `ids` |
+| `GET /v1/graphs/{id}/entities/{eid}` | одна сущность |
 | `GET /v1/graphs/{id}/relations` | `limit`, `offset`, `min_strength` |
 | `GET /v1/graphs/{id}/entities/{eid}/neighbors` | `depth` (1–4), `limit` |
-| `GET /v1/graphs/{id}/communities` | `limit`, `offset`, `level` |
+| `GET /v1/graphs/{id}/communities` | `limit`, `offset`, `level`, `ids` |
 | `GET /v1/graphs/{id}/communities/{cid}` | одно сообщество с составом |
+| `GET /v1/graphs/{id}/chunks` | `limit`, `offset`, `ids` |
 | `GET /v1/graphs/{id}/chunks/{cid}` | один исходный чанк |
 | `GET /v1/graphs/{id}/consistency` | кросс-хранилищный аудит |
 | `POST /v1/graphs/{id}/reindex/{kind}` | `community`, `descriptions` или `graph`, задачей |
@@ -241,18 +243,27 @@ Ingestion выключен по умолчанию. Граф принимает 
 | `POST /v1/graphs/{id}/search/{mode}/batch` | по ответу на каждый запрос из `queries` |
 | `POST /v1/graphs/{id}/search/{mode}/stream` | ответ через Server-Sent Events |
 
-`mix` ансамблирует локальный и наивный движки. Параметры дочерних движков
-названы отдельно — `local_params` и `naive_params` — потому что
-`MixSearchEngine` читает их из конструктора: `batch_search` игнорирует свой
-аргумент `params` целиком, а `batch_query` берёт из него только
-`ensemble_responses`.
+`mix` ансамблирует те движки, которые выбрал запрос: поле `engines` принимает
+`local`, `naive` и `global`, по умолчанию — `["local", "naive"]`. Дешёвая пара
+и та, что обслуживается любым графом с обоими индексами; `global` добавляется
+осознанно, потому что стоит одного вызова LLM на каждое пережившее отсечку
+сообщество и требует саммари сообществ.
+
+**Требования к графу следуют за составом, а не за режимом.** `["local","naive"]`
+работает на графе без саммари сообществ, а `["local","global"]` на нём же
+отвечает `409` с `missing_capability: "community_summaries"`.
+
+Параметры дочерних движков названы отдельно — `local_params`, `naive_params`,
+`global_params` — потому что `MixSearchEngine` читает их из конструктора:
+`batch_search` игнорирует свой аргумент `params` целиком, а `batch_query` берёт
+из него только `ensemble_responses`.
 
 | Режим | Тело |
 |---|---|
 | `global` | `query`, `params: GlobalSearchParams` |
 | `local` | `query`, `use_query_plan=true`, `params: LocalParams` |
 | `naive` | `query`, `use_query_plan=true`, `params: NaiveSearchParams` |
-| `mix` | `query`, `use_query_plan=true`, `params: MixQueryParams`, `local_params`, `naive_params` |
+| `mix` | `query`, `use_query_plan=true`, `params: MixQueryParams`, `engines`, `local_params`, `naive_params`, `global_params` |
 
 `params` — это собственный класс параметров движка, встроенный в модель
 запроса, а не переписанный поле за полем:
@@ -295,11 +306,18 @@ Ingestion выключен по умолчанию. Граф принимает 
 }
 ```
 
-`sources` — это ретривал, разложенный в плоские `{id, type, content, score}`:
-чанки и их скоры из `NaiveSearchResult`, сущности / связи / саммари / чанки из
-`LocalSearchResult`, оценённые инсайты из `GlobalSearchResult`. Тип результата,
-который сервис не моделирует, вырождается в один источник, отрендеренный через
-`to_text()`.
+`sources` — это ретривал, разложенный в плоские `{id, type, content, score,
+meta}`: чанки и их скоры из `NaiveSearchResult`, сущности / связи / саммари /
+чанки из `LocalSearchResult`, оценённые инсайты из `GlobalSearchResult`. Тип
+результата, который сервис не моделирует, вырождается в один источник,
+отрендеренный через `to_text()`.
+
+`meta` несёт типизированные поля источника, чтобы за ними не пришлось ходить
+отдельным запросом на каждый: у сущности — имя, тип, сообщества и породившие
+чанки, у связи — концы, тип и сила, у чанка — документ и порядковый номер, у
+саммари — заголовок отчёта. Форма выбирается по полю `kind`. Источники
+`global`-поиска несут только заголовок: `GlobalSearchResult` хранит инсайт,
+написанный моделью *о* сообществе, и не говорит, о каком именно.
 
 Если отработал план запроса, `sources` несёт свидетельства **всех** подзапросов
 без дубликатов, а не только финального: промежуточные ответы возвращаются в

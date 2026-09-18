@@ -6,6 +6,7 @@ be exercised end-to-end without building a knowledge graph.
 """
 
 from collections.abc import AsyncIterator
+from dataclasses import replace
 from typing import Any
 
 from ragu.api.backends.base import (
@@ -20,10 +21,14 @@ from ragu.api.config import DEFAULT_GRAPH_ID, GraphSpec, ServiceSettings
 from ragu.api.errors import InvalidRequestError, NotFoundError
 from ragu.api.models import (
     ChildEngineReport,
+    ChunkMeta,
+    CommunityMeta,
     EngineReport,
+    EntityMeta,
     SourceItem,
     SubqueryItem,
 )
+from ragu.api.mapping import _deduplicated
 from ragu.common.logger import logger
 from ragu.search_engine.global_search import GlobalSearchParams
 from ragu.search_engine.local_search import LocalParams
@@ -41,6 +46,42 @@ _EMPTY_STORE_FOR_CAPABILITY = {
 _FULL_STATS = GraphStats(
     entities=1, relations=1, chunks=1, community_summaries=1
 )
+
+
+_CHILD_ENGINE = {
+    "local": "LocalSearchEngine",
+    "naive": "NaiveSearchEngine",
+    "global": "GlobalSearchEngine",
+}
+
+
+def _stub_entity_source() -> SourceItem:
+    return SourceItem(
+        id="entity_1",
+        type="entity",
+        content="stub entity",
+        meta=EntityMeta(
+            name="Сенкевич",
+            type="PERSON",
+            communities=["0"],
+            source_chunk_ids=["chunk_1"],
+        ),
+    )
+
+
+def _as_child_call(call: SearchCall, child: str) -> SearchCall:
+    """
+    The call one mix child would have received on its own.
+
+    Recursing through the same builder keeps the ensemble's evidence identical
+    to what each child answers alone, which is what the real engines do.
+    """
+    params = {
+        "local": call.local_params or LocalParams(),
+        "naive": call.naive_params or NaiveSearchParams(),
+        "global": call.global_params or GlobalSearchParams(),
+    }[child]
+    return replace(call, mode=child, params=params)
 
 
 class StubBackend(SearchBackend):
@@ -120,16 +161,21 @@ class StubBackend(SearchBackend):
                     id="community_1",
                     type="community_summary",
                     content=f"stub community summary (min_cluster_size={params.min_cluster_size})",
+                    meta=CommunityMeta(title="Сенкевич и Польша"),
                 )
             ]
 
         if call.mode == "local":
             params = self.bound_params(call.params or LocalParams())
-            sources = [SourceItem(id="entity_1", type="entity", content="stub entity")]
+            sources = [_stub_entity_source()]
             if params.use_chunks:
                 sources.append(
                     SourceItem(
-                        id="chunk_1", type="chunk", content="stub chunk", score=0.87
+                        id="chunk_1",
+                        type="chunk",
+                        content="stub chunk",
+                        score=0.87,
+                        meta=ChunkMeta(doc_id="doc-1", chunk_order_idx=0),
                     )
                 )
             if params.use_summary:
@@ -138,15 +184,21 @@ class StubBackend(SearchBackend):
                         id="community_1",
                         type="community_summary",
                         content="stub community summary",
+                        meta=CommunityMeta(
+                            level=0, cluster_id=0, title="Сенкевич и Польша",
+                            entity_count=2,
+                        ),
                     )
                 )
             return sources
 
         if call.mode == "mix":
-            naive_params = self.bound_params(call.naive_params or NaiveSearchParams())
-            return [
-                SourceItem(id="entity_1", type="entity", content="stub entity")
-            ] + self._chunks(naive_params.top_k)
+            # Children overlap — local and naive both return chunks — and the
+            # real mapping deduplicates the union, so this does too.
+            sources: list[SourceItem] = []
+            for child in call.mix_engines:
+                sources.extend(self._sources_for(_as_child_call(call, child)))
+            return _deduplicated(sources)
 
         params = self.bound_params(call.params or NaiveSearchParams())
         return self._chunks(params.top_k)
@@ -159,6 +211,7 @@ class StubBackend(SearchBackend):
                 type="chunk",
                 content=f"stub chunk {i}",
                 score=round(0.9 - i / 100, 2),
+                meta=ChunkMeta(doc_id="doc-1", chunk_order_idx=i - 1),
             )
             for i in range(1, top_k + 1)
         ]
@@ -167,8 +220,8 @@ class StubBackend(SearchBackend):
         if call.mode != "mix":
             return []
         return [
-            ChildEngineReport(engine="LocalSearchEngine", mode="local", ok=True),
-            ChildEngineReport(engine="NaiveSearchEngine", mode="naive", ok=True),
+            ChildEngineReport(engine=_CHILD_ENGINE[child], mode=child, ok=True)
+            for child in call.mix_engines
         ]
 
     def _report(self, call: SearchCall, *, query_plan: bool) -> EngineReport:
@@ -182,7 +235,7 @@ class StubBackend(SearchBackend):
         )
 
     async def stream(self, call: SearchCall) -> AsyncIterator[SearchStreamEvent]:
-        self.require_capability(call.mode)
+        self.require_capability(call.mode, call.mix_engines)
         report = self._report(call, query_plan=call.use_query_plan)
         yield SearchStreamEvent(
             "meta",
@@ -201,7 +254,7 @@ class StubBackend(SearchBackend):
 
     async def search(self, call: SearchCall) -> list[SearchOutcome]:
         self.require_idle()
-        self.require_capability(call.mode)
+        self.require_capability(call.mode, call.mix_engines)
         report = self._report(call, query_plan=call.use_query_plan)
         return [
             SearchOutcome(
@@ -215,7 +268,7 @@ class StubBackend(SearchBackend):
 
     async def retrieve(self, call: SearchCall) -> list[RetrieveOutcome]:
         self.require_idle()
-        self.require_capability(call.mode)
+        self.require_capability(call.mode, call.mix_engines)
         report = self._report(call, query_plan=False)
         return [
             RetrieveOutcome(sources=self._sources_for(call), engines=report)
@@ -225,9 +278,26 @@ class StubBackend(SearchBackend):
     # --- a canned graph surface, so a client can be built without a real one ---
 
     _ENTITIES = [
-        {"id": "entity_1", "name": "Сенкевич", "type": "PERSON", "description": "stub entity"},
-        {"id": "entity_2", "name": "Польша", "type": "COUNTRY", "description": "stub entity"},
+        {"id": "entity_1", "name": "Сенкевич", "type": "PERSON",
+         "description": "stub entity", "communities": ["0"],
+         "source_chunk_ids": ["chunk_1"]},
+        {"id": "entity_2", "name": "Польша", "type": "COUNTRY",
+         "description": "stub entity", "communities": ["0"],
+         "source_chunk_ids": ["chunk_1", "chunk_2"]},
     ]
+    _CHUNKS = [
+        {"id": "chunk_1", "content": "stub chunk", "doc_id": "doc-1",
+         "chunk_order_idx": 0, "num_tokens": 2},
+        {"id": "chunk_2", "content": "stub chunk 2", "doc_id": "doc-1",
+         "chunk_order_idx": 1, "num_tokens": 3},
+    ]
+    _COMMUNITY = {"id": "com-1", "level": 0, "cluster_id": 0,
+                  "entity_count": 2, "relation_count": 1,
+                  "entity_ids": ["entity_1", "entity_2"]}
+    # Rendered the way RAGU renders a community report, so the title parser runs.
+    _COMMUNITY_SUMMARY = (
+        "Report title: Сенкевич и Польша\nReport summary: stub community summary"
+    )
     _RELATIONS = [
         {
             "id": "relation_1",
@@ -238,6 +308,7 @@ class StubBackend(SearchBackend):
             "type": "born_in",
             "description": "stub relation",
             "strength": 1.0,
+            "source_chunk_ids": ["chunk_1"],
         }
     ]
 
@@ -254,14 +325,59 @@ class StubBackend(SearchBackend):
         }
 
     async def list_entities(
-        self, *, limit, offset, entity_type=None, search=None
+        self,
+        *,
+        limit,
+        offset,
+        entity_type=None,
+        search=None,
+        community_id=None,
+        sort=None,
+        order="asc",
+        ids=None,
     ) -> tuple[int, list[Any]]:
+        if ids is not None:
+            by_id = {entity["id"]: entity for entity in self._ENTITIES}
+            found = [by_id[key] for key in dict.fromkeys(ids) if key in by_id]
+            return len(found), found
+
         items = self._ENTITIES
         if entity_type:
             items = [e for e in items if e["type"].casefold() == entity_type.casefold()]
         if search:
             items = [e for e in items if search.casefold() in e["name"].casefold()]
+        if community_id is not None:
+            items = [e for e in items if community_id in e.get("communities", [])]
+        if sort == "name":
+            items = sorted(items, key=lambda e: e["name"].casefold(), reverse=order == "desc")
+        elif sort == "degree":
+            items = sorted(items, key=self._degree, reverse=order == "desc")
+        elif sort:
+            raise InvalidRequestError(
+                f"Unknown sort '{sort}'. Expected 'degree' or 'name'."
+            )
         return len(items), items[offset : offset + limit]
+
+    def _degree(self, entity: dict[str, Any]) -> int:
+        return sum(
+            1
+            for relation in self._RELATIONS
+            for side in (relation["subject_id"], relation["object_id"])
+            if side == entity["id"]
+        )
+
+    async def get_entity(self, entity_id: str) -> Any:
+        for entity in self._ENTITIES:
+            if entity["id"] == entity_id:
+                return entity
+        raise NotFoundError(f"No entity with id '{entity_id}' in this graph.")
+
+    async def list_chunks(self, *, limit, offset, ids=None) -> tuple[int, list[Any]]:
+        if ids is not None:
+            by_id = {chunk["id"]: chunk for chunk in self._CHUNKS}
+            found = [by_id[key] for key in dict.fromkeys(ids) if key in by_id]
+            return len(found), found
+        return len(self._CHUNKS), self._CHUNKS[offset : offset + limit]
 
     async def list_relations(
         self, *, limit, offset, min_strength=None
@@ -281,23 +397,27 @@ class StubBackend(SearchBackend):
         }
 
     async def list_communities(
-        self, *, limit, offset, level=None
+        self, *, limit, offset, level=None, ids=None
     ) -> tuple[int, list[Any]]:
-        items = [({"id": "com-1", "level": 0, "cluster_id": 0}, "stub community summary")]
+        items = [(dict(self._COMMUNITY), self._COMMUNITY_SUMMARY)]
+        if ids is not None:
+            wanted = set(ids)
+            found = [item for item in items if item[0]["id"] in wanted]
+            return len(found), found
         if level is not None:
             items = [item for item in items if item[0]["level"] == level]
         return len(items), items[offset : offset + limit]
 
     async def get_community(self, community_id: str) -> tuple[Any, Any]:
-        if community_id != "com-1":
+        if community_id != self._COMMUNITY["id"]:
             raise NotFoundError(f"No community with id '{community_id}' in this graph.")
-        return {"id": "com-1", "level": 0, "cluster_id": 0}, "stub community summary"
+        return dict(self._COMMUNITY), self._COMMUNITY_SUMMARY
 
     async def get_chunk(self, chunk_id: str) -> Any:
-        if chunk_id != "chunk_1":
-            raise NotFoundError(f"No chunk with id '{chunk_id}' in this graph.")
-        return {"id": "chunk_1", "content": "stub chunk", "doc_id": "doc-1",
-                "chunk_order_idx": 0, "num_tokens": 2}
+        for chunk in self._CHUNKS:
+            if chunk["id"] == chunk_id:
+                return chunk
+        raise NotFoundError(f"No chunk with id '{chunk_id}' in this graph.")
 
     async def consistency(self) -> Any:
         return None

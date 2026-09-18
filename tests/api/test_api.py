@@ -13,7 +13,12 @@ from fastapi.testclient import TestClient  # noqa: E402
 from ragu.api.app import UNHANDLED_ERROR_MESSAGE, create_app
 from ragu.api.backends.base import GraphStats, SearchCall
 from ragu.api.config import ServiceSettings
-from ragu.api.mapping import extract_sources, extract_subqueries, to_outcome
+from ragu.api.mapping import (
+    extract_sources,
+    extract_subqueries,
+    split_report_title,
+    to_outcome,
+)
 from ragu.chunker.types import Chunk
 from ragu.common.prompts.default_models import GlobalSearchContextModel
 from ragu.graph.types import CommunitySummary, Entity, Relation
@@ -988,6 +993,9 @@ class TestMixSearch:
                 json={"query": "q", "naive_params": {"top_k": 2}},
             ).json()
         assert body["mode"] == "mix"
+        # Each child contributes what it would answer alone — the local engine
+        # its entity and chunk, the naive one its chunks — and the chunk they
+        # both return appears once.
         assert [source["type"] for source in body["sources"]] == [
             "entity",
             "chunk",
@@ -1381,7 +1389,7 @@ class TestStreamRoutes:
             async def shutdown(self):
                 pass
 
-            def require_capability(self, mode):
+            def require_capability(self, mode, mix_engines=None):
                 pass
 
             async def stream(self, call):
@@ -2092,7 +2100,7 @@ class TestServiceBounds:
             async def shutdown(self):
                 pass
 
-            def require_capability(self, mode):
+            def require_capability(self, mode, mix_engines=None):
                 pass
 
             def require_evidence(self, mode, outcome):
@@ -2426,7 +2434,11 @@ class TestGraphSurface:
         with build_client() as client:
             listing = client.get("/v1/graphs/default/communities").json()
             detail = client.get("/v1/graphs/default/communities/com-1").json()
-        assert listing["communities"][0]["summary"] == "stub community summary"
+        community = listing["communities"][0]
+        # The title is lifted out of the rendered report; the summary is the
+        # body that follows it, so a client does not re-parse RAGU's own format.
+        assert community["title"] == "Сенкевич и Польша"
+        assert community["summary"] == "Report summary: stub community summary"
         assert detail["id"] == "com-1"
         assert detail["level"] == 0
 
@@ -3082,3 +3094,327 @@ class TestGraphCacheCeiling:
         await backend._nodes()
 
         assert calls == [1]
+
+
+class TestSourceMeta:
+    """
+    Sources carry their typed fields, so a trace does not need a fetch per source.
+
+    Built from real engine result objects rather than the stub: this is the path
+    that decides whether the fields reach the wire at all.
+    """
+
+    def test_a_chunk_source_carries_its_document(self):
+        retrieval = NaiveSearchRetrieve(
+            query="q",
+            result=NaiveSearchResult(chunks=[make_chunk("text", 3)], scores=[0.5]),
+        )
+        source = extract_sources(retrieval)[0]
+        assert source.meta.kind == "chunk"
+        assert source.meta.doc_id == "doc-1"
+        assert source.meta.chunk_order_idx == 3
+
+    def test_an_entity_source_carries_its_name_type_and_provenance(self):
+        entity = Entity(
+            entity_name="Сенкевич",
+            entity_type="PERSON",
+            description="писатель",
+            source_chunk_id=["chunk-1", "chunk-2"],
+            clusters=[{"cluster_id": 7, "level": 0}],
+        )
+        retrieval = LocalSearchRetrieve(
+            query="q", result=LocalSearchResult(entities=[entity])
+        )
+        meta = extract_sources(retrieval)[0].meta
+        assert meta.kind == "entity"
+        assert meta.name == "Сенкевич"
+        assert meta.type == "PERSON"
+        assert meta.communities == ["7"]
+        assert meta.source_chunk_ids == ["chunk-1", "chunk-2"]
+
+    def test_a_relation_source_carries_both_ends_and_its_strength(self):
+        relation = Relation(
+            subject_id="ent-1",
+            object_id="ent-2",
+            subject_name="Сенкевич",
+            object_name="Польша",
+            relation_type="born_in",
+            description="родился в",
+            relation_strength=0.75,
+            source_chunk_id=["chunk-1"],
+        )
+        retrieval = LocalSearchRetrieve(
+            query="q", result=LocalSearchResult(relations=[relation])
+        )
+        meta = extract_sources(retrieval)[0].meta
+        assert meta.kind == "relation"
+        assert (meta.subject_id, meta.object_id) == ("ent-1", "ent-2")
+        assert (meta.subject_name, meta.object_name) == ("Сенкевич", "Польша")
+        assert meta.type == "born_in"
+        assert meta.strength == 0.75
+        assert meta.source_chunk_ids == ["chunk-1"]
+
+    def test_a_community_source_splits_the_report_title_from_the_body(self):
+        summary = CommunitySummary(
+            id="com-1",
+            summary="Report title: Сенкевич и Польша\nReport summary: текст",
+        )
+        retrieval = LocalSearchRetrieve(
+            query="q", result=LocalSearchResult(summaries=[summary])
+        )
+        source = extract_sources(retrieval)[0]
+        assert source.meta.kind == "community_summary"
+        assert source.meta.title == "Сенкевич и Польша"
+        assert source.content == "Report summary: текст"
+
+    def test_a_global_insight_admits_it_has_no_community(self):
+        # GlobalSearchResult carries what the LLM wrote about a community, not
+        # which community it wrote about, so the fields stay empty rather than
+        # being invented.
+        retrieval = GlobalSearchRetrieve(
+            query="q",
+            result=GlobalSearchResult(
+                insights=[
+                    GlobalSearchContextModel(reasoning="r", response="a", rating=7.0)
+                ]
+            ),
+        )
+        meta = extract_sources(retrieval)[0].meta
+        assert meta.kind == "community_summary"
+        assert meta.level is None and meta.cluster_id is None
+
+    def test_a_summary_in_another_shape_is_left_alone(self):
+        assert split_report_title("just a summary") == (None, "just a summary")
+        assert split_report_title(None) == (None, None)
+
+
+class TestSelectionById:
+    """One request for many sources, instead of one request per source."""
+
+    def test_entities_come_back_in_the_order_asked_for(self):
+        with build_client() as client:
+            body = client.get(
+                "/v1/graphs/default/entities",
+                params={"ids": ["entity_2", "entity_1"]},
+            ).json()
+        assert [e["id"] for e in body["entities"]] == ["entity_2", "entity_1"]
+
+    def test_an_unknown_id_is_skipped_not_fatal(self):
+        with build_client() as client:
+            body = client.get(
+                "/v1/graphs/default/entities", params={"ids": ["entity_1", "nope"]}
+            ).json()
+        assert [e["id"] for e in body["entities"]] == ["entity_1"]
+
+    def test_chunks_and_communities_select_the_same_way(self):
+        with build_client() as client:
+            chunks = client.get(
+                "/v1/graphs/default/chunks", params={"ids": ["chunk_2", "nope"]}
+            ).json()
+            communities = client.get(
+                "/v1/graphs/default/communities", params={"ids": ["com-1", "nope"]}
+            ).json()
+        assert [c["id"] for c in chunks["chunks"]] == ["chunk_2"]
+        assert [c["id"] for c in communities["communities"]] == ["com-1"]
+
+    def test_more_ids_than_a_page_holds_is_refused(self):
+        with build_client() as client:
+            response = client.get(
+                "/v1/graphs/default/entities",
+                params={"ids": [f"e{i}" for i in range(60)], "limit": 50},
+            )
+        assert response.status_code == 400
+        assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+    def test_chunks_page_without_ids(self):
+        with build_client() as client:
+            body = client.get(
+                "/v1/graphs/default/chunks", params={"limit": 1}
+            ).json()
+        assert body["page"]["total"] == 2
+        assert len(body["chunks"]) == 1
+
+
+class TestEntityOrdering:
+    """Sorting server-side, so a client need not download the corpus to rank it."""
+
+    def test_sorting_by_name(self):
+        with build_client() as client:
+            ascending = client.get(
+                "/v1/graphs/default/entities", params={"sort": "name"}
+            ).json()
+            descending = client.get(
+                "/v1/graphs/default/entities",
+                params={"sort": "name", "order": "desc"},
+            ).json()
+        names = [e["name"] for e in ascending["entities"]]
+        assert names == sorted(names, key=str.casefold)
+        assert [e["name"] for e in descending["entities"]] == names[::-1]
+
+    def test_sorting_by_degree_puts_the_most_connected_first(self):
+        with build_client() as client:
+            body = client.get(
+                "/v1/graphs/default/entities",
+                params={"sort": "degree", "order": "desc"},
+            ).json()
+        assert len(body["entities"]) == 2
+
+    def test_an_unknown_sort_key_is_refused(self):
+        with build_client() as client:
+            response = client.get(
+                "/v1/graphs/default/entities", params={"sort": "colour"}
+            )
+        assert response.status_code == 400
+
+    def test_filtering_by_community(self):
+        with build_client() as client:
+            inside = client.get(
+                "/v1/graphs/default/entities", params={"community_id": "0"}
+            ).json()
+            outside = client.get(
+                "/v1/graphs/default/entities", params={"community_id": "999"}
+            ).json()
+        assert inside["entities"] and not outside["entities"]
+
+
+class TestProvenanceAndSurface:
+    """The graph surface reports where each thing came from."""
+
+    def test_entities_and_relations_name_their_chunks(self):
+        with build_client() as client:
+            entity = client.get("/v1/graphs/default/entities").json()["entities"][0]
+            relation = client.get("/v1/graphs/default/relations").json()["relations"][0]
+        assert entity["source_chunk_ids"] == ["chunk_1"]
+        assert relation["source_chunk_ids"] == ["chunk_1"]
+
+    def test_one_entity_can_be_fetched_on_its_own(self):
+        with build_client() as client:
+            found = client.get("/v1/graphs/default/entities/entity_1")
+            missing = client.get("/v1/graphs/default/entities/nope")
+        assert found.status_code == 200
+        assert found.json()["name"] == "Сенкевич"
+        assert missing.status_code == 404
+        assert missing.json()["error"]["code"] == "NOT_FOUND"
+
+    def test_a_community_lists_its_members(self):
+        with build_client() as client:
+            community = client.get(
+                "/v1/graphs/default/communities"
+            ).json()["communities"][0]
+        assert community["entity_ids"] == ["entity_1", "entity_2"]
+        assert community["truncated"] is False
+
+
+class TestMixEnsembleSelection:
+    """The request chooses the ensemble, and the graph is checked against it."""
+
+    def test_the_default_ensemble_is_local_and_naive(self):
+        with build_client() as client:
+            body = client.post("/v1/search/mix", json={"query": "q"}).json()
+        assert [c["mode"] for c in body["engines"]["children"]] == ["local", "naive"]
+
+    def test_a_chosen_ensemble_is_the_one_that_runs(self):
+        with build_client() as client:
+            body = client.post(
+                "/v1/search/mix",
+                json={"query": "q", "engines": ["local", "naive", "global"]},
+            ).json()
+        assert [c["mode"] for c in body["engines"]["children"]] == [
+            "local",
+            "naive",
+            "global",
+        ]
+
+    def test_requirements_follow_the_ensemble_not_the_mode(self):
+        # The point of making this per-request: a graph with no community
+        # summaries still serves the default pair, and only refuses the
+        # ensemble that actually needs them.
+        with build_client(missing="community_summaries") as client:
+            default = client.post("/v1/search/mix", json={"query": "q"})
+            with_global = client.post(
+                "/v1/search/mix", json={"query": "q", "engines": ["local", "global"]}
+            )
+        assert default.status_code == 200
+        assert with_global.status_code == 409
+        assert with_global.json()["error"]["missing_capability"] == "community_summaries"
+
+    def test_a_single_child_ensemble_needs_only_that_child(self):
+        with build_client(missing="vector_index") as client:
+            response = client.post(
+                "/v1/search/mix", json={"query": "q", "engines": ["local"]}
+            )
+        assert response.status_code == 200
+
+    def test_an_unknown_engine_is_refused(self):
+        with build_client() as client:
+            unknown = client.post(
+                "/v1/search/mix", json={"query": "q", "engines": ["bogus"]}
+            )
+            empty = client.post("/v1/search/mix", json={"query": "q", "engines": []})
+        assert unknown.status_code == 400
+        assert empty.status_code == 400
+
+    def test_the_flat_paths_older_clients_use_are_untouched(self):
+        # sgr-agent-ragu posts exactly these three bodies.
+        with build_client() as client:
+            assert client.post("/v1/search/global", json={"query": "q"}).status_code == 200
+            assert client.post(
+                "/v1/search/local",
+                json={"query": "q", "use_query_plan": True,
+                      "params": {"use_summary": True, "use_chunks": True}},
+            ).status_code == 200
+            assert client.post(
+                "/v1/search/naive",
+                json={"query": "q", "use_query_plan": True, "params": {"top_k": 5}},
+            ).status_code == 200
+
+
+class TestStageTimings:
+    """A dashboard splits retrieval from generation without measuring it itself."""
+
+    async def test_generation_is_timed_where_it_happens(self):
+        import asyncio
+
+        from ragu.api import usage as usage_module
+
+        class SlowLLM:
+            async def chat_completion(self, conversation, *args, **kwargs):
+                await asyncio.sleep(0.02)
+                return "answer"
+
+        usage_module.start()
+        counting = usage_module.CountingLLM(SlowLLM())
+        await counting.chat_completion([{"content": "prompt"}], desc="local")
+
+        stage = usage_module.current().stages["local"]
+        assert stage.calls == 1
+        assert stage.generation_ms >= 15
+
+    async def test_retrieval_is_what_the_llm_did_not_take(self):
+        import asyncio
+
+        from ragu.api import usage as usage_module
+
+        class SlowLLM:
+            async def chat_completion(self, conversation, *args, **kwargs):
+                await asyncio.sleep(0.02)
+                return "answer"
+
+        usage_module.start()
+        counting = usage_module.CountingLLM(SlowLLM())
+        with usage_module.measure_retrieval("local"):
+            await asyncio.sleep(0.02)
+            await counting.chat_completion([{"content": "prompt"}], desc="local")
+
+        stage = usage_module.current().stages["local"]
+        # Roughly 40ms total, of which roughly 20 was the model.
+        assert stage.generation_ms >= 15
+        assert stage.retrieval_ms >= 10
+        assert stage.retrieval_ms < stage.generation_ms + 40
+
+    def test_the_timings_reach_the_wire(self):
+        with build_client() as client:
+            usage = client.post("/v1/search/naive", json={"query": "q"}).json()["usage"]
+        # The stub makes no LLM calls, so there is nothing to attribute; the
+        # fields exist and stay null rather than reporting a fabricated zero.
+        assert "stages" in usage

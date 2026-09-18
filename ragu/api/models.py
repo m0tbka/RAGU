@@ -37,6 +37,22 @@ LanguageField = Field(
     description="Answer language, e.g. 'russian'. Defaults to RAGU_API_LANGUAGE.",
 )
 
+# Which leaf engines the mix ensemble runs. Local and naive by default: they are
+# the cheap pair and the one every graph with a vector index can serve. Adding
+# global is a deliberate choice, because global costs one LLM call per surviving
+# community and needs community summaries the graph may not have.
+MixEngine = Literal["local", "naive", "global"]
+
+DEFAULT_MIX_ENGINES: tuple[str, ...] = ("local", "naive")
+
+MixEnginesField = Field(
+    default_factory=lambda: list(DEFAULT_MIX_ENGINES),
+    min_length=1,
+    max_length=3,
+    description="Leaf engines to ensemble, in order. Adding 'global' requires "
+    "community summaries and costs one LLM call per surviving community.",
+)
+
 
 
 class GlobalSearchRequest(BaseModel):
@@ -92,6 +108,7 @@ class MixSearchRequest(BaseModel):
         default_factory=MixQueryParams,
         description="MixSearchEngine parameters: ensemble_responses",
     )
+    engines: list[MixEngine] = MixEnginesField
     local_params: LocalParams = Field(
         default_factory=LocalParams,
         description="Parameters for the local child engine. MixSearchEngine reads "
@@ -101,6 +118,10 @@ class MixSearchRequest(BaseModel):
     naive_params: NaiveSearchParams = Field(
         default_factory=NaiveSearchParams,
         description="Parameters for the naive child engine",
+    )
+    global_params: GlobalSearchParams = Field(
+        default_factory=GlobalSearchParams,
+        description="Parameters for the global child engine, when it is selected",
     )
     language: str | None = LanguageField
     rerank: bool = RerankField
@@ -158,6 +179,12 @@ class StageUsageModel(BaseModel):
     calls: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    retrieval_ms: float | None = Field(
+        default=None, description="Wall time spent retrieving, in milliseconds"
+    )
+    generation_ms: float | None = Field(
+        default=None, description="Wall time spent in the LLM, in milliseconds"
+    )
 
 
 class UsageModel(BaseModel):
@@ -179,6 +206,70 @@ class UsageModel(BaseModel):
     stages: dict[str, StageUsageModel] = Field(default_factory=dict)
 
 
+class EntityMeta(BaseModel):
+    """
+    The typed fields behind an entity source.
+    """
+
+    kind: Literal["entity"] = "entity"
+    name: str
+    type: str
+    degree: int | None = Field(
+        default=None, description="Relations touching this entity, when counted"
+    )
+    communities: list[str] = Field(default_factory=list)
+    source_chunk_ids: list[str] = Field(
+        default_factory=list, description="Chunks this entity was extracted from"
+    )
+
+
+class RelationMeta(BaseModel):
+    """
+    The typed fields behind a relation source.
+    """
+
+    kind: Literal["relation"] = "relation"
+    subject_id: str
+    object_id: str
+    subject_name: str
+    object_name: str
+    type: str
+    strength: float = 1.0
+    source_chunk_ids: list[str] = Field(
+        default_factory=list, description="Chunks this relation was extracted from"
+    )
+
+
+class ChunkMeta(BaseModel):
+    """
+    The typed fields behind a chunk source.
+    """
+
+    kind: Literal["chunk"] = "chunk"
+    doc_id: str | None = None
+    chunk_order_idx: int | None = None
+
+
+class CommunityMeta(BaseModel):
+    """
+    The typed fields behind a community-summary source.
+
+    ``level``, ``cluster_id`` and ``entity_count`` are filled only when the
+    source carries a real community id. Global search reports insights the LLM
+    wrote *about* communities and does not say which one each came from, so its
+    sources carry the title alone.
+    """
+
+    kind: Literal["community_summary"] = "community_summary"
+    level: int | None = None
+    cluster_id: int | None = None
+    title: str | None = None
+    entity_count: int | None = None
+
+
+SourceMeta = EntityMeta | RelationMeta | ChunkMeta | CommunityMeta
+
+
 class SourceItem(BaseModel):
     id: str = Field(
         description="Stable source identifier, e.g. chunk_42 or community_3"
@@ -189,6 +280,12 @@ class SourceItem(BaseModel):
     content: str = Field(default="", description="Source text")
     score: float | None = Field(
         default=None, description="Retrieval score when the engine provides one"
+    )
+    meta: SourceMeta | None = Field(
+        default=None,
+        discriminator="kind",
+        description="Typed fields for this source kind, so a client need not "
+        "fetch each source again to learn what it is",
     )
 
 
@@ -248,8 +345,10 @@ class MixRetrieveRequest(BaseModel):
 
     query: str = Field(min_length=1, description="Search query")
     params: MixQueryParams = Field(default_factory=MixQueryParams)
+    engines: list[MixEngine] = MixEnginesField
     local_params: LocalParams = Field(default_factory=LocalParams)
     naive_params: NaiveSearchParams = Field(default_factory=NaiveSearchParams)
+    global_params: GlobalSearchParams = Field(default_factory=GlobalSearchParams)
     rerank: bool = RerankField
 
 
@@ -308,8 +407,10 @@ class NaiveBatchRequest(BatchQueries):
 class MixBatchRequest(BatchQueries):
     use_query_plan: bool = Field(default=True)
     params: MixQueryParams = Field(default_factory=MixQueryParams)
+    engines: list[MixEngine] = MixEnginesField
     local_params: LocalParams = Field(default_factory=LocalParams)
     naive_params: NaiveSearchParams = Field(default_factory=NaiveSearchParams)
+    global_params: GlobalSearchParams = Field(default_factory=GlobalSearchParams)
     language: str | None = LanguageField
     rerank: bool = RerankField
 
@@ -423,6 +524,11 @@ class EntityItem(BaseModel):
     communities: list[str] = Field(
         default_factory=list, description="Community ids this entity belongs to"
     )
+    source_chunk_ids: list[str] = Field(
+        default_factory=list,
+        description="Chunks this entity was extracted from. The only way back "
+        "from an entity to the text that produced it: there is no reverse index",
+    )
 
 
 class RelationItem(BaseModel):
@@ -434,6 +540,9 @@ class RelationItem(BaseModel):
     type: str
     description: str = ""
     strength: float = 1.0
+    source_chunk_ids: list[str] = Field(
+        default_factory=list, description="Chunks this relation was extracted from"
+    )
 
 
 class EntityPage(BaseModel):
@@ -470,7 +579,20 @@ class CommunityItem(BaseModel):
     cluster_id: int
     entity_count: int = 0
     relation_count: int = 0
-    summary: str | None = None
+    title: str | None = Field(
+        default=None,
+        description="Report title, lifted out of the summary text RAGU renders",
+    )
+    summary: str | None = Field(
+        default=None, description="Report body, without the title line"
+    )
+    entity_ids: list[str] = Field(
+        default_factory=list,
+        description="Members, for highlighting the community without fetching it",
+    )
+    truncated: bool = Field(
+        default=False, description="entity_ids hit the ceiling and was cut short"
+    )
 
 
 class CommunityPage(BaseModel):
@@ -493,6 +615,11 @@ class ChunkItem(BaseModel):
     doc_id: str | None = None
     chunk_order_idx: int | None = None
     num_tokens: int | None = None
+
+
+class ChunkPage(BaseModel):
+    page: PageInfo
+    chunks: list[ChunkItem] = Field(default_factory=list)
 
 
 class GraphDetail(BaseModel):

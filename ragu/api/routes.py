@@ -6,12 +6,13 @@ any change in the service (see the spec, "Per-route policy").
 """
 
 import json
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from fastapi.responses import StreamingResponse
 
 from ragu.api.backends.base import (
+    DEFAULT_MIX_ENGINES,
     MODE_REQUIREMENTS,
     RetrieveOutcome,
     SearchStreamEvent,
@@ -27,6 +28,7 @@ from ragu.api.errors import (
     ServiceNotReadyError,
 )
 from ragu.api.jobs import Job, JobManager
+from ragu.api.mapping import split_report_title
 from ragu.api.metrics import GRAPHS, JOBS, SEARCHES, metrics
 from ragu.api.middleware import Admission
 from ragu.api import usage
@@ -36,6 +38,7 @@ from ragu.api.models import (
     BuildRequest,
     ChildEngineReport,
     ChunkItem,
+    ChunkPage,
     CommunityDetail,
     CommunityItem,
     CommunityPage,
@@ -100,6 +103,10 @@ router = APIRouter()
 # flat paths that predate the catalogue keep working.
 search_router = APIRouter(dependencies=[Depends(generation_slot)])
 
+
+# A community can hold thousands of entities; the list is for highlighting one
+# on a canvas, not for paging through it. Above this the caller asks /entities.
+COMMUNITY_MEMBER_LIMIT = 1000
 
 SEARCH_RESPONSES = {
     409: {
@@ -181,6 +188,12 @@ def _usage_model() -> UsageModel | None:
                 calls=stage.calls,
                 prompt_tokens=stage.prompt_tokens,
                 completion_tokens=stage.completion_tokens,
+                retrieval_ms=(
+                    round(stage.retrieval_ms, 1)
+                    if stage.retrieval_ms is not None
+                    else None
+                ),
+                generation_ms=round(stage.generation_ms, 1) or None,
             )
             for name, stage in record.stages.items()
         },
@@ -319,6 +332,8 @@ def _call(mode: SearchMode, payload: Any) -> SearchCall:
         params=payload.params,
         local_params=getattr(payload, "local_params", None),
         naive_params=getattr(payload, "naive_params", None),
+        global_params=getattr(payload, "global_params", None),
+        mix_engines=tuple(getattr(payload, "engines", None) or DEFAULT_MIX_ENGINES),
         use_query_plan=getattr(payload, "use_query_plan", False),
         language=getattr(payload, "language", None),
         rerank=getattr(payload, "rerank", True),
@@ -500,6 +515,8 @@ def _batch_call(mode: SearchMode, payload: Any) -> SearchCall:
         params=payload.params,
         local_params=getattr(payload, "local_params", None),
         naive_params=getattr(payload, "naive_params", None),
+        global_params=getattr(payload, "global_params", None),
+        mix_engines=tuple(getattr(payload, "engines", None) or DEFAULT_MIX_ENGINES),
         use_query_plan=getattr(payload, "use_query_plan", False),
         language=getattr(payload, "language", None),
         rerank=getattr(payload, "rerank", True),
@@ -653,7 +670,7 @@ async def _stream(mode: SearchMode, payload: Any, backend: SearchBackend) -> Res
     call = _call(mode, payload)
     # Inside an open stream a 409 could only be an SSE event, so the capability
     # is checked while a status code can still carry it.
-    backend.require_capability(mode)
+    backend.require_capability(mode, call.mix_engines)
 
     async def events():
         async for event in backend.stream(call):
@@ -847,6 +864,34 @@ async def prometheus_metrics(request: Request) -> Response:
     return Response(content=metrics.render(), media_type="text/plain; version=0.0.4")
 
 
+def _chunk_item(chunk: Any) -> ChunkItem:
+    """
+    Render a chunk, from either a real ``Chunk`` or the stub's mapping.
+    """
+    if isinstance(chunk, dict):
+        return ChunkItem(**chunk)
+    return ChunkItem(
+        id=chunk.id,
+        content=chunk.content,
+        doc_id=getattr(chunk, "doc_id", None),
+        chunk_order_idx=getattr(chunk, "chunk_order_idx", None),
+        num_tokens=getattr(chunk, "num_tokens", None),
+    )
+
+
+def _require_id_count(ids: list[str] | None, limit: int) -> None:
+    """
+    Hold a by-id selection to the same ceiling as a page.
+
+    :raises InvalidRequestError: If more ids were asked for than a page holds.
+    """
+    if ids is not None and len(ids) > limit:
+        raise InvalidRequestError(
+            f"Asked for {len(ids)} ids, which is over the limit of {limit}. "
+            "Raise `limit` or split the request."
+        )
+
+
 def _entity_item(entity: Any) -> EntityItem:
     """
     Render an entity, from either a real ``Entity`` or the stub's mapping.
@@ -863,6 +908,7 @@ def _entity_item(entity: Any) -> EntityItem:
             for cluster in (getattr(entity, "clusters", None) or [])
             if cluster.get("cluster_id") is not None
         ],
+        source_chunk_ids=list(getattr(entity, "source_chunk_id", None) or []),
     )
 
 
@@ -878,19 +924,27 @@ def _relation_item(relation: Any) -> RelationItem:
         type=relation.relation_type,
         description=relation.description or "",
         strength=float(getattr(relation, "relation_strength", 1.0)),
+        source_chunk_ids=list(getattr(relation, "source_chunk_id", None) or []),
     )
 
 
 def _community_item(community: Any, summary: Any) -> CommunityItem:
+    title, body = split_report_title(_summary_text(summary))
     if isinstance(community, dict):
-        return CommunityItem(**community, summary=_summary_text(summary))
+        return CommunityItem(**community, title=title, summary=body)
+
+    entities = community.entities or []
+    members = [entity.id for entity in entities][:COMMUNITY_MEMBER_LIMIT]
     return CommunityItem(
         id=community.id,
         level=community.level,
         cluster_id=community.cluster_id,
-        entity_count=len(community.entities or []),
+        entity_count=len(entities),
         relation_count=len(community.relations or []),
-        summary=_summary_text(summary),
+        title=title,
+        summary=body,
+        entity_ids=members,
+        truncated=len(entities) > len(members),
     )
 
 
@@ -938,13 +992,77 @@ async def list_entities(
     offset: int = Query(default=0, ge=0),
     type: str | None = Query(default=None, description="Exact entity type"),
     search: str | None = Query(default=None, description="Substring of the name"),
+    community_id: str | None = Query(
+        default=None, description="Only entities in this community"
+    ),
+    sort: Literal["degree", "name"] | None = Query(
+        default=None, description="Sort key; storage order when omitted"
+    ),
+    order: Literal["asc", "desc"] = Query(default="asc"),
+    ids: list[str] | None = Query(
+        default=None,
+        description="Fetch exactly these entities. Every other filter and the "
+        "paging are ignored, and an unknown id is skipped rather than failing "
+        "the selection.",
+    ),
 ) -> EntityPage:
+    _require_id_count(ids, limit)
     total, entities = await backend.list_entities(
-        limit=limit, offset=offset, entity_type=type, search=search
+        limit=limit,
+        offset=offset,
+        entity_type=type,
+        search=search,
+        community_id=community_id,
+        sort=sort,
+        order=order,
+        ids=ids,
     )
     return EntityPage(
-        page=PageInfo(total=total, limit=limit, offset=offset),
+        page=PageInfo(total=total, limit=limit, offset=0 if ids else offset),
         entities=[_entity_item(entity) for entity in entities],
+    )
+
+
+@router.get(
+    "/v1/graphs/{graph_id}/entities/{entity_id}",
+    response_model=EntityItem,
+    responses=GRAPH_RESPONSES,
+    tags=["graphs"],
+)
+async def get_entity(
+    graph_id: str,
+    entity_id: str,
+    backend: SearchBackend = Depends(get_backend),
+) -> EntityItem:
+    """
+    One entity, without having to ask for its neighbourhood to find it.
+    """
+    return _entity_item(await backend.get_entity(entity_id))
+
+
+@router.get(
+    "/v1/graphs/{graph_id}/chunks",
+    response_model=ChunkPage,
+    responses=GRAPH_RESPONSES,
+    tags=["graphs"],
+)
+async def list_chunks(
+    graph_id: str,
+    backend: SearchBackend = Depends(get_backend),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    ids: list[str] | None = Query(
+        default=None, description="Fetch exactly these chunks, skipping the unknown"
+    ),
+) -> ChunkPage:
+    """
+    Source chunks, for resolving the ids a search answer cites in one call.
+    """
+    _require_id_count(ids, limit)
+    total, chunks = await backend.list_chunks(limit=limit, offset=offset, ids=ids)
+    return ChunkPage(
+        page=PageInfo(total=total, limit=limit, offset=0 if ids else offset),
+        chunks=[_chunk_item(chunk) for chunk in chunks],
     )
 
 
@@ -1011,10 +1129,17 @@ async def list_communities(
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     level: int | None = Query(default=None, description="Leiden level"),
+    ids: list[str] | None = Query(
+        default=None,
+        description="Fetch exactly these communities, skipping the unknown",
+    ),
 ) -> CommunityPage:
-    total, rows = await backend.list_communities(limit=limit, offset=offset, level=level)
+    _require_id_count(ids, limit)
+    total, rows = await backend.list_communities(
+        limit=limit, offset=offset, level=level, ids=ids
+    )
     return CommunityPage(
-        page=PageInfo(total=total, limit=limit, offset=offset),
+        page=PageInfo(total=total, limit=limit, offset=0 if ids else offset),
         communities=[_community_item(community, summary) for community, summary in rows],
     )
 
@@ -1058,16 +1183,7 @@ async def get_chunk(
     """
     One source chunk, for tracing an answer back to the corpus.
     """
-    chunk = await backend.get_chunk(chunk_id)
-    if isinstance(chunk, dict):
-        return ChunkItem(**chunk)
-    return ChunkItem(
-        id=chunk.id,
-        content=chunk.content,
-        doc_id=getattr(chunk, "doc_id", None),
-        chunk_order_idx=getattr(chunk, "chunk_order_idx", None),
-        num_tokens=getattr(chunk, "num_tokens", None),
-    )
+    return _chunk_item(await backend.get_chunk(chunk_id))
 
 
 @router.get(

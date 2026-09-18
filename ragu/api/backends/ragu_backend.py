@@ -4,7 +4,7 @@ Adapter over the RAGU engines.
 
 import asyncio
 import os
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Iterator, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any, get_type_hints
 
@@ -24,6 +24,7 @@ from ragu import (
     SimpleChunker,
 )
 from ragu.api.backends.base import (
+    DEFAULT_MIX_ENGINES,
     GraphStats,
     SearchStreamEvent,
     RetrieveOutcome,
@@ -41,13 +42,14 @@ from ragu.api.errors import (
 )
 from ragu.api.mapping import extract_sources, to_outcome
 from ragu.api.reranking import ForgivingScorer, rerank_failure, reset_rerank_report
-from ragu.api.usage import CountingLLM
+from ragu.api.usage import CountingLLM, measure_retrieval
 from ragu.api.models import ChildEngineReport, EngineReport, SearchMode
 from ragu.common.logger import logger
 from ragu.models.embedder import Embedder
 from ragu.models.llm import LLM
 from ragu.models.scorer import Scorer
 from ragu.search_engine.base_engine import BaseEngine
+from ragu.search_engine.global_search import GlobalSearchParams
 from ragu.search_engine.local_search import LocalParams
 from ragu.search_engine.naive_search import NaiveSearchParams
 from ragu.search_engine.query_plan import QueryPlanEngine
@@ -117,6 +119,17 @@ async def exclusive_settings() -> AsyncIterator[None]:
     async with _settings_lock:
         with isolated_settings():
             yield
+
+
+def _cluster_ids(entity: Any) -> set[str]:
+    """
+    The community ids an entity belongs to, as the wire spells them.
+    """
+    return {
+        str(cluster.get("cluster_id"))
+        for cluster in (getattr(entity, "clusters", None) or [])
+        if cluster.get("cluster_id") is not None
+    }
 
 
 class RecordingEngine:
@@ -195,6 +208,7 @@ class RaguBackend(SearchBackend):
         self._engine_kwargs: dict[str, Any] = {}
         self._node_cache: list[Any] | None = None
         self._edge_cache: list[Any] | None = None
+        self._degree_cache: dict[str, int] | None = None
         self.graph: KnowledgeGraph | None = None
         self._engines: dict[
             tuple[SearchMode, str, bool], BaseEngine[Any, Any]
@@ -429,6 +443,7 @@ class RaguBackend(SearchBackend):
     def _drop_graph_cache(self) -> None:
         self._node_cache = None
         self._edge_cache = None
+        self._degree_cache = None
 
     async def graph_detail(self) -> dict[str, Any]:
         graph, _, embedder = self._require_loaded()
@@ -460,8 +475,16 @@ class RaguBackend(SearchBackend):
         offset: int,
         entity_type: str | None = None,
         search: str | None = None,
+        community_id: str | None = None,
+        sort: str | None = None,
+        order: str = "asc",
+        ids: Sequence[str] | None = None,
     ) -> tuple[int, list[Any]]:
         self.require_idle()
+        if ids is not None:
+            found = await self._entities_by_id(ids)
+            return len(found), found
+
         nodes = await self._nodes()
         if entity_type:
             wanted = entity_type.casefold()
@@ -469,7 +492,81 @@ class RaguBackend(SearchBackend):
         if search:
             needle = search.casefold()
             nodes = [n for n in nodes if needle in (n.entity_name or "").casefold()]
+        if community_id is not None:
+            nodes = [n for n in nodes if community_id in _cluster_ids(n)]
+        if sort:
+            nodes = await self._sorted(nodes, sort, order)
         return len(nodes), nodes[offset : offset + limit]
+
+    async def _entities_by_id(self, ids: Sequence[str]) -> list[Any]:
+        """
+        Exactly these entities, in the order asked for, skipping the unknown.
+        """
+        graph, _, _ = self._require_loaded()
+        wanted = list(dict.fromkeys(ids))
+        found = await graph.index.graph_backend.get_nodes(wanted)
+        return [node for node in found if node is not None]
+
+    async def _sorted(self, nodes: list[Any], sort: str, order: str) -> list[Any]:
+        """
+        Order a filtered entity list.
+
+        Degree is counted from the edge list rather than asked of the storage:
+        the adapters expose no degree, and the edges are materialized anyway for
+        the relation routes.
+        """
+        if sort == "name":
+
+            def key(node: Any) -> Any:
+                return (node.entity_name or "").casefold()
+
+        elif sort == "degree":
+            degrees = await self._degrees()
+
+            def key(node: Any) -> Any:
+                return degrees.get(node.id, 0)
+
+        else:
+            raise InvalidRequestError(
+                f"Unknown sort '{sort}'. Expected 'degree' or 'name'."
+            )
+        return sorted(nodes, key=key, reverse=order == "desc")
+
+    async def _degrees(self) -> dict[str, int]:
+        """
+        How many relations touch each entity.
+        """
+        if self._degree_cache is None:
+            degrees: dict[str, int] = {}
+            for edge in await self._edges():
+                for side in (edge.subject_id, edge.object_id):
+                    degrees[side] = degrees.get(side, 0) + 1
+            self._degree_cache = degrees
+        return self._degree_cache
+
+    async def get_entity(self, entity_id: str) -> Any:
+        self.require_idle()
+        graph, _, _ = self._require_loaded()
+        found = await graph.index.graph_backend.get_nodes([entity_id])
+        if not found or found[0] is None:
+            raise NotFoundError(f"No entity with id '{entity_id}' in this graph.")
+        return found[0]
+
+    async def list_chunks(
+        self, *, limit: int, offset: int, ids: Sequence[str] | None = None
+    ) -> tuple[int, list[Any]]:
+        self.require_idle()
+        graph, _, _ = self._require_loaded()
+        if ids is not None:
+            wanted = list(dict.fromkeys(ids))
+            found = await graph.get_chunks(wanted)
+            kept = [chunk for chunk in found if chunk is not None]
+            return len(kept), kept
+
+        keys = sorted(await graph.index.chunks_kv_storage.all_keys())
+        page = keys[offset : offset + limit]
+        found = await graph.get_chunks(page)
+        return len(keys), [chunk for chunk in found if chunk is not None]
 
     async def list_relations(
         self, *, limit: int, offset: int, min_strength: float | None = None
@@ -527,15 +624,29 @@ class RaguBackend(SearchBackend):
         }
 
     async def list_communities(
-        self, *, limit: int, offset: int, level: int | None = None
+        self,
+        *,
+        limit: int,
+        offset: int,
+        level: int | None = None,
+        ids: Sequence[str] | None = None,
     ) -> tuple[int, list[Any]]:
         self.require_idle()
         graph, _, _ = self._require_loaded()
-        ids = sorted(await graph.index.community_kv_storage.all_keys())
-        communities = [c for c in await graph.get_communities(ids) if c is not None]
-        if level is not None:
-            communities = [c for c in communities if c.level == level]
-        page = communities[offset : offset + limit]
+        if ids is not None:
+            wanted = list(dict.fromkeys(ids))
+            communities = [
+                c for c in await graph.get_communities(wanted) if c is not None
+            ]
+            page = communities
+        else:
+            keys = sorted(await graph.index.community_kv_storage.all_keys())
+            communities = [
+                c for c in await graph.get_communities(keys) if c is not None
+            ]
+            if level is not None:
+                communities = [c for c in communities if c.level == level]
+            page = communities[offset : offset + limit]
         summaries = await graph.index.community_summary_kv_storage.get_by_ids(
             [c.id for c in page]
         )
@@ -769,7 +880,9 @@ class RaguBackend(SearchBackend):
         ``mix`` is assembled per request: ``MixSearchEngine`` reads its
         children's parameters from the constructor — ``batch_search`` ignores its
         ``params`` argument and ``batch_query`` reads only ``ensemble_responses``
-        — so the ensemble cannot be built once and parameterized later.
+        — so the ensemble cannot be built once and parameterized later. The
+        request also chooses *which* children run, so the ensemble is not one
+        fixed pair.
 
         :param call: The resolved request.
         :return: The engine, and the recording proxies of its children if any.
@@ -781,7 +894,7 @@ class RaguBackend(SearchBackend):
                 "Knowledge graph is not loaded yet.", mode=call.mode
             )
         self.require_idle()
-        self.require_capability(call.mode)
+        self.require_capability(call.mode, call.mix_engines)
         language = call.language or self.language
 
         reset_rerank_report()
@@ -790,20 +903,34 @@ class RaguBackend(SearchBackend):
         if call.mode != "mix":
             return self._leaf_engine(call.mode, language, rerank), ()
 
-        children = (
-            RecordingEngine(self._leaf_engine("local", language, rerank), "local"),
-            RecordingEngine(self._leaf_engine("naive", language, rerank), "naive"),
+        selected = tuple(call.mix_engines) or DEFAULT_MIX_ENGINES
+        children = tuple(
+            RecordingEngine(self._leaf_engine(child, language, rerank), child)
+            for child in selected
         )
         engine = MixSearchEngine(
             llm=self._require_llm(),
             engines=list(children),
-            engine_params=[
-                self.bound_params(call.local_params or LocalParams()),
-                self.bound_params(call.naive_params or NaiveSearchParams()),
-            ],
+            # Positional, aligned with `engines`: MixSearchEngine zips the two.
+            engine_params=[self._child_params(child, call) for child in selected],
             language=language,
         )
         return engine, children
+
+    def _child_params(self, child: str, call: SearchCall) -> Any:
+        """
+        The parameter object one mix child runs with, bounded by the service.
+
+        :param child: Leaf mode the child engine serves.
+        :param call: The resolved request.
+        :return: That child's parameters.
+        """
+        defaults: dict[str, Any] = {
+            "local": call.local_params or LocalParams(),
+            "naive": call.naive_params or NaiveSearchParams(),
+            "global": call.global_params or GlobalSearchParams(),
+        }
+        return self.bound_params(defaults[child])
 
     def _report(
         self,
@@ -882,7 +1009,8 @@ class RaguBackend(SearchBackend):
         try:
             if call.use_query_plan:
                 engine = QueryPlanEngine(engine)
-            responses = await engine.batch_query(list(call.queries), params)
+            with measure_retrieval(call.mode):
+                responses = await engine.batch_query(list(call.queries), params)
         except RaguServiceError:
             # A budget or capability refusal already carries its own status.
             raise
@@ -916,7 +1044,8 @@ class RaguBackend(SearchBackend):
             # No QueryPlanEngine here: its batch_search delegates straight to the
             # wrapped engine, so wrapping would only imply planning that does not
             # happen.
-            retrievals = await engine.batch_search(list(call.queries), params)
+            with measure_retrieval(call.mode):
+                retrievals = await engine.batch_search(list(call.queries), params)
         except RaguServiceError:
             raise
         except Exception as exc:

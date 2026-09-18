@@ -11,6 +11,8 @@ enough to price a request and to stop a runaway one, and labelled ``estimated``
 so nobody bills from them.
 """
 
+import time
+from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
@@ -33,6 +35,11 @@ class StageUsage:
     calls: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    # Generation is timed exactly, around the call itself. Retrieval is what is
+    # left of the stage once the LLM is accounted for: the engines interleave
+    # storage reads with generation, so it cannot be timed from outside them.
+    generation_ms: float = 0.0
+    retrieval_ms: float | None = None
 
 
 @dataclass
@@ -59,13 +66,30 @@ class Usage:
     def total_tokens(self) -> int:
         return self.prompt_tokens + self.completion_tokens
 
+    @property
+    def generation_ms(self) -> float:
+        return sum(stage.generation_ms for stage in self.stages.values())
+
     def record(
-        self, stage: str, calls: int, prompt_tokens: int, completion_tokens: int
+        self,
+        stage: str,
+        calls: int,
+        prompt_tokens: int,
+        completion_tokens: int,
+        generation_ms: float = 0.0,
     ) -> None:
         entry = self.stages.setdefault(stage, StageUsage())
         entry.calls += calls
         entry.prompt_tokens += prompt_tokens
         entry.completion_tokens += completion_tokens
+        entry.generation_ms += generation_ms
+
+    def record_retrieval(self, stage: str, retrieval_ms: float) -> None:
+        """
+        Attribute time spent outside the LLM to a stage.
+        """
+        entry = self.stages.setdefault(stage, StageUsage())
+        entry.retrieval_ms = (entry.retrieval_ms or 0.0) + max(retrieval_ms, 0.0)
 
 
 _usage: ContextVar[Usage | None] = ContextVar("usage", default=None)
@@ -95,7 +119,13 @@ def current() -> Usage | None:
     return _usage.get()
 
 
-def _charge(stage: str, calls: int, prompt_tokens: int, completion_tokens: int) -> None:
+def _charge(
+    stage: str,
+    calls: int,
+    prompt_tokens: int,
+    completion_tokens: int,
+    generation_ms: float = 0.0,
+) -> None:
     """
     Add to the current request's usage and enforce its budget.
 
@@ -104,7 +134,7 @@ def _charge(stage: str, calls: int, prompt_tokens: int, completion_tokens: int) 
     usage = _usage.get()
     if usage is None:
         return
-    usage.record(stage, calls, prompt_tokens, completion_tokens)
+    usage.record(stage, calls, prompt_tokens, completion_tokens, generation_ms)
 
     max_calls, max_tokens = _budget.get()
     if max_calls is not None and usage.calls > max_calls:
@@ -118,6 +148,28 @@ def _charge(stage: str, calls: int, prompt_tokens: int, completion_tokens: int) 
             f"This request spent about {usage.total_tokens} tokens, over its budget of "
             f"{max_tokens}."
         )
+
+
+@contextmanager
+def measure_retrieval(stage: str):
+    """
+    Time a block and record whatever of it was not spent in the LLM.
+
+    The engines read storage and generate inside one call, so retrieval cannot
+    be timed by wrapping a narrower thing; what is left after subtracting the
+    generation this block paid for is the honest answer.
+
+    :param stage: Stage name to record the time under.
+    """
+    usage = _usage.get()
+    before = usage.generation_ms if usage is not None else 0.0
+    started = time.perf_counter()
+    try:
+        yield
+    finally:
+        if usage is not None:
+            elapsed = (time.perf_counter() - started) * 1000.0
+            usage.record_retrieval(stage, elapsed - (usage.generation_ms - before))
 
 
 class CountingLLM(LLM):
@@ -172,12 +224,14 @@ class CountingLLM(LLM):
     @override
     async def chat_completion(self, conversation: Any, *args: Any, **kwargs: Any) -> Any:
         stage = kwargs.get("desc") or UNKNOWN_STAGE
+        started = time.perf_counter()
         answer = await self.llm.chat_completion(conversation, *args, **kwargs)
         _charge(
             stage,
             1,
             self._conversation_tokens(conversation),
             self._answer_tokens(answer),
+            (time.perf_counter() - started) * 1000.0,
         )
         return answer
 
@@ -185,12 +239,14 @@ class CountingLLM(LLM):
         self, conversations: list[Any], *args: Any, **kwargs: Any
     ) -> Any:
         stage = kwargs.get("desc") or UNKNOWN_STAGE
+        started = time.perf_counter()
         answers = await self.llm.batch_chat_completion(conversations, *args, **kwargs)
+        elapsed = (time.perf_counter() - started) * 1000.0
         prompt = sum(
             self._conversation_tokens(conversation) for conversation in conversations
         )
         completion = sum(self._answer_tokens(answer) for answer in answers or [])
-        _charge(stage, len(conversations), prompt, completion)
+        _charge(stage, len(conversations), prompt, completion, elapsed)
         return answers
 
     async def stream_chat_completion(
@@ -199,9 +255,16 @@ class CountingLLM(LLM):
         stage = kwargs.get("desc") or UNKNOWN_STAGE
         # Counted as one call; the deltas are summed as they pass.
         completion = 0
+        started = time.perf_counter()
         async for delta in self.llm.stream_chat_completion(
             conversation, *args, **kwargs
         ):
             completion += self._count(delta if isinstance(delta, str) else "")
             yield delta
-        _charge(stage, 1, self._conversation_tokens(conversation), completion)
+        _charge(
+            stage,
+            1,
+            self._conversation_tokens(conversation),
+            completion,
+            (time.perf_counter() - started) * 1000.0,
+        )

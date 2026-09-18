@@ -165,11 +165,13 @@ back to it.
 | Route | |
 |---|---|
 | `GET /v1/graphs/{id}/stats` | sizes, `embedding_dim`, documents, mode availability |
-| `GET /v1/graphs/{id}/entities` | `limit`, `offset`, `type`, `search` (name substring) |
+| `GET /v1/graphs/{id}/entities` | `limit`, `offset`, `type`, `search` (name substring), `community_id`, `sort` (`degree`/`name`), `order`, `ids` |
+| `GET /v1/graphs/{id}/entities/{eid}` | one entity |
 | `GET /v1/graphs/{id}/relations` | `limit`, `offset`, `min_strength` |
 | `GET /v1/graphs/{id}/entities/{eid}/neighbors` | `depth` (1–4), `limit` |
-| `GET /v1/graphs/{id}/communities` | `limit`, `offset`, `level` |
+| `GET /v1/graphs/{id}/communities` | `limit`, `offset`, `level`, `ids` |
 | `GET /v1/graphs/{id}/communities/{cid}` | one community with its members |
+| `GET /v1/graphs/{id}/chunks` | `limit`, `offset`, `ids` |
 | `GET /v1/graphs/{id}/chunks/{cid}` | one source chunk |
 | `GET /v1/graphs/{id}/consistency` | the cross-storage audit |
 | `POST /v1/graphs/{id}/reindex/{kind}` | `community`, `descriptions` or `graph`, as a job |
@@ -241,17 +243,27 @@ before the service served more than one graph and addresses the default graph.
 | `POST /v1/graphs/{id}/search/{mode}/batch` | one answer per query in `queries` |
 | `POST /v1/graphs/{id}/search/{mode}/stream` | the answer as Server-Sent Events |
 
-`mix` ensembles the local and naive engines. Its child parameters are named
-separately — `local_params` and `naive_params` — because `MixSearchEngine` reads
-them from its constructor: `batch_search` ignores its `params` argument
-entirely, and `batch_query` reads only `ensemble_responses` from it.
+`mix` ensembles the engines the request selects: `engines` accepts `local`,
+`naive` and `global`, and defaults to `["local", "naive"]` — the cheap pair, and
+the one any graph with both indexes can serve. Adding `global` is deliberate: it
+costs one LLM call per surviving community and needs community summaries.
+
+**What the graph must hold follows the ensemble, not the mode.**
+`["local","naive"]` runs on a graph with no community summaries, while
+`["local","global"]` on that same graph answers `409` with
+`missing_capability: "community_summaries"`.
+
+Child parameters are named separately — `local_params`, `naive_params`,
+`global_params` — because `MixSearchEngine` reads them from its constructor:
+`batch_search` ignores its `params` argument entirely, and `batch_query` reads
+only `ensemble_responses` from it.
 
 | Mode | Body |
 |---|---|
 | `global` | `query`, `params: GlobalSearchParams` |
 | `local` | `query`, `use_query_plan=true`, `params: LocalParams` |
 | `naive` | `query`, `use_query_plan=true`, `params: NaiveSearchParams` |
-| `mix` | `query`, `use_query_plan=true`, `params: MixQueryParams`, `local_params`, `naive_params` |
+| `mix` | `query`, `use_query_plan=true`, `params: MixQueryParams`, `engines`, `local_params`, `naive_params`, `global_params` |
 
 `params` is the engine's own parameter class, embedded in the request model
 rather than restated field by field:
@@ -294,11 +306,18 @@ Success response:
 }
 ```
 
-`sources` is the retrieval flattened to `{id, type, content, score}`: chunks and
-their scores from `NaiveSearchResult`, entities / relations / summaries / chunks
-from `LocalSearchResult`, rated insights from `GlobalSearchResult`. A result
-type the service does not model degrades to a single source rendered with
-`to_text()`.
+`sources` is the retrieval flattened to `{id, type, content, score, meta}`:
+chunks and their scores from `NaiveSearchResult`, entities / relations /
+summaries / chunks from `LocalSearchResult`, rated insights from
+`GlobalSearchResult`. A result type the service does not model degrades to a
+single source rendered with `to_text()`.
+
+`meta` carries that source's typed fields, so a client does not fetch each
+source again to learn what it is: an entity's name, type, communities and the
+chunks it came from; a relation's ends, type and strength; a chunk's document
+and position; a community report's title. The shape is selected by `kind`.
+Sources from `global` carry the title alone: `GlobalSearchResult` holds the
+insight the model wrote *about* a community, not which community it was.
 
 When a query plan ran, `sources` carries the evidence of **every** subquery,
 deduplicated, not only that of the final one — the intermediate answers are

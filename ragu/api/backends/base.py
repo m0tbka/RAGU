@@ -4,7 +4,7 @@ Backend interface used by the API layer.
 
 import asyncio
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
@@ -54,8 +54,9 @@ NAIVE_UNAVAILABLE_MESSAGE = (
 )
 
 MIX_MISSING_MESSAGE = (
-    "Mixed search ensembles the local and naive engines, so it needs both an entity index "
-    "and a chunk index. Use whichever single mode this graph supports."
+    "Mixed search needs everything its child engines read, and this graph is missing one "
+    "of those stores. Drop that engine from `engines`, or use whichever single mode this "
+    "graph supports."
 )
 MIX_UNAVAILABLE_MESSAGE = (
     "Mixed search found nothing for this query in either the entity index or the chunk "
@@ -104,6 +105,39 @@ MODE_REQUIREMENTS: dict[SearchMode, ModeRequirement] = {
 }
 
 
+
+# The ensemble mix runs when the request does not say. Local and naive: the
+# cheap pair, and the one any graph with both indexes can serve.
+DEFAULT_MIX_ENGINES: tuple[str, ...] = ("local", "naive")
+
+
+def required_capabilities(
+    mode: SearchMode, mix_engines: Sequence[str] | None = None
+) -> tuple[Capability, ...]:
+    """
+    What the graph must hold for this request to run.
+
+    ``mix`` has no fixed answer: it needs whatever its children read, and the
+    request chooses the children. Asking for the local and naive pair needs no
+    community summaries, so a graph built without them still serves mix — which
+    a fixed requirement would have refused.
+
+    :param mode: Search mode about to run.
+    :param mix_engines: For ``mix``, the leaf engines selected. ``None`` means
+        the default ensemble.
+    :return: The capabilities needed, in a stable order, without repeats.
+    """
+    if mode != "mix":
+        return MODE_REQUIREMENTS[mode].requires
+
+    needed: list[Capability] = []
+    for engine in mix_engines or DEFAULT_MIX_ENGINES:
+        for capability in MODE_REQUIREMENTS[engine].requires:
+            if capability not in needed:
+                needed.append(capability)
+    return tuple(needed)
+
+
 @dataclass(frozen=True, slots=True)
 class GraphStats:
     """
@@ -140,23 +174,30 @@ class GraphStats:
             return self.entities > 0
         return self.chunks > 0
 
-    def supports(self, mode: SearchMode) -> bool:
+    def supports(
+        self, mode: SearchMode, mix_engines: Sequence[str] | None = None
+    ) -> bool:
         """
         Whether the graph holds everything this mode reads.
 
         :param mode: Search mode to check.
+        :param mix_engines: For ``mix``, the leaf engines the request selected.
         :return: ``True`` when the mode can be served.
         """
-        return self.missing_for(mode) is None
+        return self.missing_for(mode, mix_engines) is None
 
-    def missing_for(self, mode: SearchMode) -> Capability | None:
+    def missing_for(
+        self, mode: SearchMode, mix_engines: Sequence[str] | None = None
+    ) -> Capability | None:
         """
         The first capability this mode needs and the graph does not have.
 
         :param mode: Search mode to check.
+        :param mix_engines: For ``mix``, the leaf engines the request selected.
+            ``None`` means the default ensemble.
         :return: The missing capability, or ``None`` when the mode is supported.
         """
-        for capability in MODE_REQUIREMENTS[mode].requires:
+        for capability in required_capabilities(mode, mix_engines):
             if not self.has(capability):
                 return capability
         return None
@@ -191,6 +232,10 @@ class SearchCall:
     :param params: The engine's own parameter object for this mode.
     :param local_params: Local child parameters; ``mix`` only.
     :param naive_params: Naive child parameters; ``mix`` only.
+    :param global_params: Global child parameters; ``mix`` only.
+    :param mix_engines: Leaf engines the ensemble runs; ``mix`` only. The
+        request chooses them, so what ``mix`` requires of the graph is decided
+        per request rather than fixed.
     :param use_query_plan: Whether to decompose the query first. Ignored by
         retrieval: ``QueryPlanEngine.batch_search`` delegates straight to the
         wrapped engine and does no planning.
@@ -204,6 +249,8 @@ class SearchCall:
     params: Any = None
     local_params: LocalParams | None = None
     naive_params: NaiveSearchParams | None = None
+    global_params: Any = None
+    mix_engines: tuple[str, ...] = DEFAULT_MIX_ENGINES
     use_query_plan: bool = False
     language: str | None = None
     rerank: bool = True
@@ -391,13 +438,43 @@ class SearchBackend(ABC):
         offset: int,
         entity_type: str | None = None,
         search: str | None = None,
+        community_id: str | None = None,
+        sort: str | None = None,
+        order: str = "asc",
+        ids: Sequence[str] | None = None,
     ) -> tuple[int, list[Any]]:
         """
-        A page of entities, filtered by type and by name substring.
+        A page of entities, filtered, sorted, or fetched by id.
 
+        Sorting is here rather than in the client because the alternative is
+        downloading the corpus to find its most connected entities: a 41k-entity
+        graph is 83 pages, which is the client-side cache this surface exists to
+        remove.
+
+        :param ids: When given, exactly these entities, in the order asked for;
+            every other filter and the paging are ignored. An id that is not in
+            the graph is skipped rather than failing the whole selection.
+        :param sort: ``degree`` or ``name``. ``None`` keeps storage order.
+        :param order: ``asc`` or ``desc``.
         :return: Total matching before paging, and the page itself.
         """
         raise self._no_surface("its entities")
+
+    async def get_entity(self, entity_id: str) -> Any:
+        """
+        One entity.
+
+        :raises NotFoundError: If the graph holds no such entity.
+        """
+        raise self._no_surface("its entities")
+
+    async def list_chunks(
+        self, *, limit: int, offset: int, ids: Sequence[str] | None = None
+    ) -> tuple[int, list[Any]]:
+        """
+        A page of source chunks, or exactly the ones named.
+        """
+        raise self._no_surface("its chunks")
 
     async def list_relations(
         self, *, limit: int, offset: int, min_strength: float | None = None
@@ -414,10 +491,15 @@ class SearchBackend(ABC):
         raise self._no_surface("its neighbourhoods")
 
     async def list_communities(
-        self, *, limit: int, offset: int, level: int | None = None
+        self,
+        *,
+        limit: int,
+        offset: int,
+        level: int | None = None,
+        ids: Sequence[str] | None = None,
     ) -> tuple[int, list[Any]]:
         """
-        A page of detected communities.
+        A page of detected communities, or exactly the ones named.
         """
         raise self._no_surface("its communities")
 
@@ -471,17 +553,20 @@ class SearchBackend(ABC):
                 f"{self.settings.max_batch_size}"
             )
 
-    def require_capability(self, mode: SearchMode) -> None:
+    def require_capability(
+        self, mode: SearchMode, mix_engines: Sequence[str] | None = None
+    ) -> None:
         """
         Refuse a mode the loaded graph cannot serve, before generating anything.
 
         :param mode: Search mode about to run.
-        :raises CapabilityUnavailableError: If the store this mode reads is empty.
+        :param mix_engines: For ``mix``, the leaf engines the request selected.
+        :raises CapabilityUnavailableError: If a store this mode reads is empty.
         """
         stats = self._stats
         if stats is None:
             return
-        missing = stats.missing_for(mode)
+        missing = stats.missing_for(mode, mix_engines)
         if missing is None:
             return
         raise CapabilityUnavailableError(
