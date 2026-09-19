@@ -53,6 +53,9 @@ python -m ragu.api --backend ragu --storage-folder ragu_working_dir
 `--host`, `--port`, `--backend` и `--storage-folder` переопределяют
 соответствующие переменные окружения из командной строки.
 
+Краткая сводка последних изменений и того, что из-за них можно удалить у себя,
+— в [`api-changes.md`](api-changes.md).
+
 ### Схема API
 
 Схема лежит в репозитории: [`docs/openapi.json`](../openapi.json) — 55 операций,

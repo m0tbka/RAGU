@@ -44,7 +44,7 @@ Query -> SearchEngine.a_search() -> retrieval context
 
 The full public API is re-exported from `ragu/__init__.py`. Top-level subpackages: `chunker`, `common`, `graph`, `models`, `search_engine`, `storage`, `triplet`, `utils`.
 
-`ragu/api/` is a FastAPI service that serves a **prebuilt** graph over HTTP (it never builds one). It ships inside the wheel behind the `api` extra and is documented in `docs/{en,ru}/api.md`; deployment and package internals live in `ragu/api/README.md`. `tests/api/` opens with `pytest.importorskip("fastapi")`, so the `api` extra has to be installed for it to run at all:
+`ragu/api/` is a FastAPI service that serves a **prebuilt** graph over HTTP (it never builds one). It ships inside the wheel behind the `api` extra and is documented in `docs/{en,ru}/api.md`; deployment and package internals live in `ragu/api/README.md`. The schema is committed at `docs/openapi.json` and checked against the running app by `tests/api`; regenerate it with `python -m ragu.api --dump-openapi docs/openapi.json`. `docs/ru/api-changes.md` is the short brief on what the service gained recently and what a consumer can delete on its own side. `tests/api/` opens with `pytest.importorskip("fastapi")`, so the `api` extra has to be installed for it to run at all:
 
 ```bash
 uv sync --frozen --extra api --extra test
