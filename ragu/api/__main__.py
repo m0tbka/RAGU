@@ -1,10 +1,11 @@
 """Entry point: ``python -m ragu.api``."""
 
 import argparse
+import pathlib
 
 import uvicorn
 
-from ragu.api.app import create_app
+from ragu.api.app import create_app, openapi_document
 from ragu.api.config import ServiceSettings
 from ragu.api.logging_setup import configure_logging
 
@@ -29,7 +30,19 @@ def main() -> None:
         help="RAGU storage folder with the built graph (default from RAGU_API_STORAGE_FOLDER)",
     )
     parser.add_argument("--log-level", default="info", help="Log level")
+    parser.add_argument(
+        "--dump-openapi",
+        metavar="PATH",
+        default=None,
+        help="Write the OpenAPI schema to PATH and exit, instead of serving",
+    )
     args = parser.parse_args()
+
+    if args.dump_openapi:
+        pathlib.Path(args.dump_openapi).write_text(
+            openapi_document(), encoding="utf-8", newline="\n"
+        )
+        return
 
     configure_logging(args.log_level)
 

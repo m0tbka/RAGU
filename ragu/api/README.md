@@ -12,7 +12,14 @@ deployment, and how the code is put together.
 ```bash
 python -m ragu.api --port 8020 --backend stub   # no graph, no LLM
 pytest tests/api                                       # needs the `api` extra
+python -m ragu.api --dump-openapi docs/openapi.json    # after changing the contract
 ```
+
+`docs/openapi.json` is the schema as the repository knows it. It is generated,
+never edited: `tests/api` compares it against the live application and fails
+with the regeneration command when the two disagree. Committing it is what makes
+a contract change visible in review and lets a consumer generate a client
+without booting the service.
 
 ## Docker
 

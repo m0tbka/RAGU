@@ -3,6 +3,7 @@ FastAPI application factory.
 """
 
 import asyncio
+import json
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -139,6 +140,27 @@ def create_app(
 
     app.include_router(router)
     return app
+
+
+def openapi_document() -> str:
+    """
+    The OpenAPI schema, serialized exactly as it is committed.
+
+    The schema is generated from the routes and the pydantic models, so it
+    cannot drift from the code — but it only exists while the service runs,
+    which means a change to the contract is invisible in review and a consumer
+    has to boot the service to generate a client. Writing it to the repository
+    fixes both, and a test compares the two so the file cannot go stale.
+
+    Built against the stub settings so that a developer's own ``RAGU_API_*``
+    environment cannot change what lands in the file.
+
+    :return: The schema as pretty JSON, keys sorted, with a trailing newline.
+    """
+    app = create_app(ServiceSettings(backend="stub"))
+    return (
+        json.dumps(app.openapi(), indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+    )
 
 
 def _install_middleware(app: FastAPI, settings: ServiceSettings) -> None:

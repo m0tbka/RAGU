@@ -1,0 +1,6202 @@
+{
+  "components": {
+    "schemas": {
+      "BatchSearchItem": {
+        "description": "One query's result inside a batch.\n\nA query that retrieved nothing carries ``error`` instead of an answer: one\nempty query must not fail the whole batch.",
+        "properties": {
+          "answer": {
+            "default": "",
+            "title": "Answer",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceItem"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "subqueries": {
+            "items": {
+              "$ref": "#/components/schemas/SubqueryItem"
+            },
+            "title": "Subqueries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "BatchSearchItem",
+        "type": "object"
+      },
+      "BatchSearchResponse": {
+        "properties": {
+          "engines": {
+            "$ref": "#/components/schemas/EngineReport"
+          },
+          "mode": {
+            "enum": [
+              "global",
+              "local",
+              "naive",
+              "mix"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BatchSearchItem"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UsageModel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the whole batch cost, by stage"
+          },
+          "used_query_plan": {
+            "title": "Used Query Plan",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mode",
+          "used_query_plan",
+          "engines",
+          "results"
+        ],
+        "title": "BatchSearchResponse",
+        "type": "object"
+      },
+      "BuildRequest": {
+        "additionalProperties": false,
+        "description": "Documents to add to a graph.",
+        "properties": {
+          "documents": {
+            "description": "Raw document texts to ingest",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Documents",
+            "type": "array"
+          }
+        },
+        "required": [
+          "documents"
+        ],
+        "title": "BuildRequest",
+        "type": "object"
+      },
+      "ChildEngineReport": {
+        "description": "What one child engine of an ensemble actually did.",
+        "properties": {
+          "engine": {
+            "description": "Child engine class name",
+            "title": "Engine",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the child failed, when it did",
+            "title": "Error"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Search mode the child corresponds to, when known",
+            "title": "Mode"
+          },
+          "ok": {
+            "description": "Whether the child produced a result",
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "engine",
+          "ok"
+        ],
+        "title": "ChildEngineReport",
+        "type": "object"
+      },
+      "ChunkItem": {
+        "description": "One source chunk, for tracing an answer back to the corpus.",
+        "properties": {
+          "chunk_order_idx": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Order Idx"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "num_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Tokens"
+          }
+        },
+        "required": [
+          "id",
+          "content"
+        ],
+        "title": "ChunkItem",
+        "type": "object"
+      },
+      "ChunkMeta": {
+        "description": "The typed fields behind a chunk source.",
+        "properties": {
+          "chunk_order_idx": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Order Idx"
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          },
+          "kind": {
+            "const": "chunk",
+            "default": "chunk",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "title": "ChunkMeta",
+        "type": "object"
+      },
+      "ChunkPage": {
+        "properties": {
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkItem"
+            },
+            "title": "Chunks",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "title": "ChunkPage",
+        "type": "object"
+      },
+      "CommunityDetail": {
+        "properties": {
+          "cluster_id": {
+            "title": "Cluster Id",
+            "type": "integer"
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/EntityItem"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "entity_count": {
+            "default": 0,
+            "title": "Entity Count",
+            "type": "integer"
+          },
+          "entity_ids": {
+            "description": "Members, for highlighting the community without fetching it",
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Ids",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "relation_count": {
+            "default": 0,
+            "title": "Relation Count",
+            "type": "integer"
+          },
+          "relations": {
+            "items": {
+              "$ref": "#/components/schemas/RelationItem"
+            },
+            "title": "Relations",
+            "type": "array"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Report body, without the title line",
+            "title": "Summary"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Report title, lifted out of the summary text RAGU renders",
+            "title": "Title"
+          },
+          "truncated": {
+            "default": false,
+            "description": "entity_ids hit the ceiling and was cut short",
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "cluster_id"
+        ],
+        "title": "CommunityDetail",
+        "type": "object"
+      },
+      "CommunityItem": {
+        "properties": {
+          "cluster_id": {
+            "title": "Cluster Id",
+            "type": "integer"
+          },
+          "entity_count": {
+            "default": 0,
+            "title": "Entity Count",
+            "type": "integer"
+          },
+          "entity_ids": {
+            "description": "Members, for highlighting the community without fetching it",
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Ids",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "relation_count": {
+            "default": 0,
+            "title": "Relation Count",
+            "type": "integer"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Report body, without the title line",
+            "title": "Summary"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Report title, lifted out of the summary text RAGU renders",
+            "title": "Title"
+          },
+          "truncated": {
+            "default": false,
+            "description": "entity_ids hit the ceiling and was cut short",
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "cluster_id"
+        ],
+        "title": "CommunityItem",
+        "type": "object"
+      },
+      "CommunityMeta": {
+        "description": "The typed fields behind a community-summary source.\n\n``level``, ``cluster_id`` and ``entity_count`` are filled only when the\nsource carries a real community id. Global search reports insights the LLM\nwrote *about* communities and does not say which one each came from, so its\nsources carry the title alone.",
+        "properties": {
+          "cluster_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cluster Id"
+          },
+          "entity_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Count"
+          },
+          "kind": {
+            "const": "community_summary",
+            "default": "community_summary",
+            "title": "Kind",
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "CommunityMeta",
+        "type": "object"
+      },
+      "CommunityPage": {
+        "properties": {
+          "communities": {
+            "items": {
+              "$ref": "#/components/schemas/CommunityItem"
+            },
+            "title": "Communities",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "title": "CommunityPage",
+        "type": "object"
+      },
+      "ConsistencyIssueItem": {
+        "properties": {
+          "check": {
+            "title": "Check",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "check",
+          "message"
+        ],
+        "title": "ConsistencyIssueItem",
+        "type": "object"
+      },
+      "ConsistencyReportModel": {
+        "properties": {
+          "consistent": {
+            "title": "Consistent",
+            "type": "boolean"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyIssueItem"
+            },
+            "title": "Issues",
+            "type": "array"
+          }
+        },
+        "required": [
+          "consistent"
+        ],
+        "title": "ConsistencyReportModel",
+        "type": "object"
+      },
+      "EngineReport": {
+        "description": "What ran, as opposed to what was asked for.\n\n``MixSearchEngine`` tolerates child failures by design, so a request that\nasked for graph plus chunks can silently be answered from chunks alone.\nThis reports the difference instead of hiding it.",
+        "properties": {
+          "children": {
+            "description": "Per-child outcome, for ensemble engines",
+            "items": {
+              "$ref": "#/components/schemas/ChildEngineReport"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "degraded": {
+            "default": false,
+            "description": "True when some child engine did not contribute",
+            "title": "Degraded",
+            "type": "boolean"
+          },
+          "query_plan": {
+            "default": false,
+            "description": "Whether the query was decomposed first",
+            "title": "Query Plan",
+            "type": "boolean"
+          },
+          "requested": {
+            "description": "Mode the client asked for",
+            "enum": [
+              "global",
+              "local",
+              "naive",
+              "mix"
+            ],
+            "title": "Requested",
+            "type": "string"
+          },
+          "rerank_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why reranking was skipped; the answer is the un-reranked one",
+            "title": "Rerank Error"
+          },
+          "reranked": {
+            "default": false,
+            "description": "Whether a reranker actually reordered the results",
+            "title": "Reranked",
+            "type": "boolean"
+          },
+          "used": {
+            "description": "Engine class that produced the answer",
+            "title": "Used",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requested",
+          "used"
+        ],
+        "title": "EngineReport",
+        "type": "object"
+      },
+      "EntityItem": {
+        "properties": {
+          "communities": {
+            "description": "Community ids this entity belongs to",
+            "items": {
+              "type": "string"
+            },
+            "title": "Communities",
+            "type": "array"
+          },
+          "degree": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Relations touching this entity, when counted",
+            "title": "Degree"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source_chunk_ids": {
+            "description": "Chunks this entity was extracted from. The only way back from an entity to the text that produced it: there is no reverse index",
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Chunk Ids",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type"
+        ],
+        "title": "EntityItem",
+        "type": "object"
+      },
+      "EntityMeta": {
+        "description": "The typed fields behind an entity source.",
+        "properties": {
+          "communities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Communities",
+            "type": "array"
+          },
+          "degree": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Relations touching this entity, when counted",
+            "title": "Degree"
+          },
+          "kind": {
+            "const": "entity",
+            "default": "entity",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source_chunk_ids": {
+            "description": "Chunks this entity was extracted from",
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Chunk Ids",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "EntityMeta",
+        "type": "object"
+      },
+      "EntityPage": {
+        "properties": {
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/EntityItem"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "title": "EntityPage",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "missing_capability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Capability"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Correlates this response with the service log; echoed in the X-Request-ID header",
+            "title": "Request Id"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "GlobalBatchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 2,
+                "pattern": "^[A-Za-z][A-Za-z \\-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Answer language, e.g. 'russian'. Defaults to RAGU_API_LANGUAGE.",
+            "title": "Language"
+          },
+          "params": {
+            "$ref": "#/components/schemas/GlobalSearchParams"
+          },
+          "queries": {
+            "description": "Queries to answer in one pass",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Queries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "queries"
+        ],
+        "title": "GlobalBatchRequest",
+        "type": "object"
+      },
+      "GlobalRetrieveRequest": {
+        "additionalProperties": false,
+        "description": "Retrieval-only request.\n\nNo ``use_query_plan``: ``QueryPlanEngine.batch_search`` delegates straight to\nthe wrapped engine and does no planning, so accepting the flag would promise\na decomposition that never happens.",
+        "properties": {
+          "params": {
+            "$ref": "#/components/schemas/GlobalSearchParams"
+          },
+          "query": {
+            "description": "Search query",
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "GlobalRetrieveRequest",
+        "type": "object"
+      },
+      "GlobalSearchParams": {
+        "properties": {
+          "min_cluster_size": {
+            "default": 1,
+            "title": "Min Cluster Size",
+            "type": "integer"
+          }
+        },
+        "title": "GlobalSearchParams",
+        "type": "object"
+      },
+      "GlobalSearchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 2,
+                "pattern": "^[A-Za-z][A-Za-z \\-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Answer language, e.g. 'russian'. Defaults to RAGU_API_LANGUAGE.",
+            "title": "Language"
+          },
+          "params": {
+            "$ref": "#/components/schemas/GlobalSearchParams",
+            "description": "GlobalSearchEngine retrieval parameters: min_cluster_size"
+          },
+          "query": {
+            "description": "Search query",
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "GlobalSearchRequest",
+        "type": "object"
+      },
+      "GraphDetail": {
+        "description": "Everything a client needs to describe a corpus in an interface.",
+        "properties": {
+          "accepts_documents": {
+            "default": false,
+            "title": "Accepts Documents",
+            "type": "boolean"
+          },
+          "chunks": {
+            "default": 0,
+            "title": "Chunks",
+            "type": "integer"
+          },
+          "communities": {
+            "default": 0,
+            "title": "Communities",
+            "type": "integer"
+          },
+          "community_summaries": {
+            "default": 0,
+            "title": "Community Summaries",
+            "type": "integer"
+          },
+          "documents": {
+            "default": 0,
+            "title": "Documents",
+            "type": "integer"
+          },
+          "embedding_dim": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Dim"
+          },
+          "entities": {
+            "default": 0,
+            "title": "Entities",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "loaded": {
+            "title": "Loaded",
+            "type": "boolean"
+          },
+          "modes": {
+            "items": {
+              "$ref": "#/components/schemas/ModeAvailability"
+            },
+            "title": "Modes",
+            "type": "array"
+          },
+          "relations": {
+            "default": 0,
+            "title": "Relations",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "loaded",
+          "language"
+        ],
+        "title": "GraphDetail",
+        "type": "object"
+      },
+      "GraphInfo": {
+        "description": "One graph in the catalogue.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why this graph is not loaded, when it is not",
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "description": "Default answer language for this graph",
+            "title": "Language",
+            "type": "string"
+          },
+          "loaded": {
+            "title": "Loaded",
+            "type": "boolean"
+          },
+          "modes": {
+            "items": {
+              "$ref": "#/components/schemas/ModeAvailability"
+            },
+            "title": "Modes",
+            "type": "array"
+          },
+          "stats": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraphStatsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "loaded",
+          "language"
+        ],
+        "title": "GraphInfo",
+        "type": "object"
+      },
+      "GraphListResponse": {
+        "properties": {
+          "default": {
+            "description": "Graph served by the paths that name none",
+            "title": "Default",
+            "type": "string"
+          },
+          "graphs": {
+            "items": {
+              "$ref": "#/components/schemas/GraphInfo"
+            },
+            "title": "Graphs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "default"
+        ],
+        "title": "GraphListResponse",
+        "type": "object"
+      },
+      "GraphStatsResponse": {
+        "description": "Sizes of the stores each search mode reads, counted once at startup.",
+        "properties": {
+          "chunks": {
+            "description": "Vectorized chunks backing naive search",
+            "title": "Chunks",
+            "type": "integer"
+          },
+          "community_summaries": {
+            "description": "Community summaries backing global search",
+            "title": "Community Summaries",
+            "type": "integer"
+          },
+          "entities": {
+            "description": "Vectorized entities backing local search",
+            "title": "Entities",
+            "type": "integer"
+          },
+          "relations": {
+            "description": "Vectorized relations backing local search",
+            "title": "Relations",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entities",
+          "relations",
+          "chunks",
+          "community_summaries"
+        ],
+        "title": "GraphStatsResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the backend is not ready, when it is not",
+            "title": "Error"
+          },
+          "graph_loaded": {
+            "title": "Graph Loaded",
+            "type": "boolean"
+          },
+          "stats": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraphStatsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Graph sizes; absent until the graph is loaded"
+          },
+          "status": {
+            "description": "'ok' when searches can be served, else 'degraded'",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "graph_loaded"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "JobListResponse": {
+        "properties": {
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/JobResponse"
+            },
+            "title": "Jobs",
+            "type": "array"
+          }
+        },
+        "title": "JobListResponse",
+        "type": "object"
+      },
+      "JobResponse": {
+        "description": "A long-running operation and what became of it.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "graph_id": {
+            "title": "Graph Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "description": "queued, running, succeeded, failed or cancelled",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "graph_id",
+          "state",
+          "created_at"
+        ],
+        "title": "JobResponse",
+        "type": "object"
+      },
+      "LocalBatchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 2,
+                "pattern": "^[A-Za-z][A-Za-z \\-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Answer language, e.g. 'russian'. Defaults to RAGU_API_LANGUAGE.",
+            "title": "Language"
+          },
+          "params": {
+            "$ref": "#/components/schemas/LocalParams"
+          },
+          "queries": {
+            "description": "Queries to answer in one pass",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Queries",
+            "type": "array"
+          },
+          "rerank": {
+            "default": true,
+            "description": "Use the configured reranker. A no-op when the deployment has none; a failing one degrades to the un-reranked order rather than a 500.",
+            "title": "Rerank",
+            "type": "boolean"
+          },
+          "use_query_plan": {
+            "default": true,
+            "title": "Use Query Plan",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "queries"
+        ],
+        "title": "LocalBatchRequest",
+        "type": "object"
+      },
+      "LocalParams": {
+        "properties": {
+          "rerank_top_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Top K"
+          },
+          "top_k": {
+            "default": 20,
+            "title": "Top K",
+            "type": "integer"
+          },
+          "use_chunks": {
+            "default": true,
+            "title": "Use Chunks",
+            "type": "boolean"
+          },
+          "use_summary": {
+            "default": false,
+            "title": "Use Summary",
+            "type": "boolean"
+          }
+        },
+        "title": "LocalParams",
+        "type": "object"
+      },
+      "LocalRetrieveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "params": {
+            "$ref": "#/components/schemas/LocalParams"
+          },
+          "query": {
+            "description": "Search query",
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "rerank": {
+            "default": true,
+            "description": "Use the configured reranker. A no-op when the deployment has none; a failing one degrades to the un-reranked order rather than a 500.",
+            "title": "Rerank",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "LocalRetrieveRequest",
+        "type": "object"
+      },
+      "LocalSearchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 2,
+                "pattern": "^[A-Za-z][A-Za-z \\-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Answer language, e.g. 'russian'. Defaults to RAGU_API_LANGUAGE.",
+            "title": "Language"
+          },
+          "params": {
+            "$ref": "#/components/schemas/LocalParams",
+            "description": "LocalSearchEngine retrieval parameters: top_k, rerank_top_k, use_summary, use_chunks"
+          },
+          "query": {
+            "description": "Search query",
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "rerank": {
+            "default": true,
+            "description": "Use the configured reranker. A no-op when the deployment has none; a failing one degrades to the un-reranked order rather than a 500.",
+            "title": "Rerank",
+            "type": "boolean"
+          },
+          "use_query_plan": {
+            "default": true,
+            "description": "Decompose the query into subqueries",
+            "title": "Use Query Plan",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "LocalSearchRequest",
+        "type": "object"
+      },
+      "MixBatchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "engines": {
+            "description": "Leaf engines to ensemble, in order. Adding 'global' requires community summaries and costs one LLM call per surviving community.",
+            "items": {
+              "enum": [
+                "local",
+                "naive",
+                "global"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Engines",
+            "type": "array"
+          },
+          "global_params": {
+            "$ref": "#/components/schemas/GlobalSearchParams"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 2,
+                "pattern": "^[A-Za-z][A-Za-z \\-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Answer language, e.g. 'russian'. Defaults to RAGU_API_LANGUAGE.",
+            "title": "Language"
+          },
+          "local_params": {
+            "$ref": "#/components/schemas/LocalParams"
+          },
+          "naive_params": {
+            "$ref": "#/components/schemas/NaiveSearchParams"
+          },
+          "params": {
+            "$ref": "#/components/schemas/MixQueryParams"
+          },
+          "queries": {
+            "description": "Queries to answer in one pass",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Queries",
+            "type": "array"
+          },
+          "rerank": {
+            "default": true,
+            "description": "Use the configured reranker. A no-op when the deployment has none; a failing one degrades to the un-reranked order rather than a 500.",
+            "title": "Rerank",
+            "type": "boolean"
+          },
+          "use_query_plan": {
+            "default": true,
+            "title": "Use Query Plan",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "queries"
+        ],
+        "title": "MixBatchRequest",
+        "type": "object"
+      },
+      "MixQueryParams": {
+        "properties": {
+          "ensemble_responses": {
+            "default": false,
+            "title": "Ensemble Responses",
+            "type": "boolean"
+          }
+        },
+        "title": "MixQueryParams",
+        "type": "object"
+      },
+      "MixRetrieveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "engines": {
+            "description": "Leaf engines to ensemble, in order. Adding 'global' requires community summaries and costs one LLM call per surviving community.",
+            "items": {
+              "enum": [
+                "local",
+                "naive",
+                "global"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Engines",
+            "type": "array"
+          },
+          "global_params": {
+            "$ref": "#/components/schemas/GlobalSearchParams"
+          },
+          "local_params": {
+            "$ref": "#/components/schemas/LocalParams"
+          },
+          "naive_params": {
+            "$ref": "#/components/schemas/NaiveSearchParams"
+          },
+          "params": {
+            "$ref": "#/components/schemas/MixQueryParams"
+          },
+          "query": {
+            "description": "Search query",
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "rerank": {
+            "default": true,
+            "description": "Use the configured reranker. A no-op when the deployment has none; a failing one degrades to the un-reranked order rather than a 500.",
+            "title": "Rerank",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "MixRetrieveRequest",
+        "type": "object"
+      },
+      "MixSearchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "engines": {
+            "description": "Leaf engines to ensemble, in order. Adding 'global' requires community summaries and costs one LLM call per surviving community.",
+            "items": {
+              "enum": [
+                "local",
+                "naive",
+                "global"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Engines",
+            "type": "array"
+          },
+          "global_params": {
+            "$ref": "#/components/schemas/GlobalSearchParams",
+            "description": "Parameters for the global child engine, when it is selected"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 2,
+                "pattern": "^[A-Za-z][A-Za-z \\-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Answer language, e.g. 'russian'. Defaults to RAGU_API_LANGUAGE.",
+            "title": "Language"
+          },
+          "local_params": {
+            "$ref": "#/components/schemas/LocalParams",
+            "description": "Parameters for the local child engine. MixSearchEngine reads child parameters from its constructor, not from the request-time params, so they are named separately here."
+          },
+          "naive_params": {
+            "$ref": "#/components/schemas/NaiveSearchParams",
+            "description": "Parameters for the naive child engine"
+          },
+          "params": {
+            "$ref": "#/components/schemas/MixQueryParams",
+            "description": "MixSearchEngine parameters: ensemble_responses"
+          },
+          "query": {
+            "description": "Search query",
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "rerank": {
+            "default": true,
+            "description": "Use the configured reranker. A no-op when the deployment has none; a failing one degrades to the un-reranked order rather than a 500.",
+            "title": "Rerank",
+            "type": "boolean"
+          },
+          "use_query_plan": {
+            "default": true,
+            "description": "Decompose the query into subqueries",
+            "title": "Use Query Plan",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "MixSearchRequest",
+        "type": "object"
+      },
+      "ModeAvailability": {
+        "description": "Whether one search mode can run against a graph, and why not when it cannot.\n\nA client has to know which modes to offer before it offers them; without\nthis it can only try one and read the 409.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "missing_capability": {
+            "anyOf": [
+              {
+                "enum": [
+                  "entity_graph",
+                  "community_summaries",
+                  "vector_index"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Capability"
+          },
+          "mode": {
+            "enum": [
+              "global",
+              "local",
+              "naive",
+              "mix"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the graph would need, when the mode is off",
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "mode",
+          "available"
+        ],
+        "title": "ModeAvailability",
+        "type": "object"
+      },
+      "NaiveBatchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 2,
+                "pattern": "^[A-Za-z][A-Za-z \\-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Answer language, e.g. 'russian'. Defaults to RAGU_API_LANGUAGE.",
+            "title": "Language"
+          },
+          "params": {
+            "$ref": "#/components/schemas/NaiveSearchParams"
+          },
+          "queries": {
+            "description": "Queries to answer in one pass",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Queries",
+            "type": "array"
+          },
+          "rerank": {
+            "default": true,
+            "description": "Use the configured reranker. A no-op when the deployment has none; a failing one degrades to the un-reranked order rather than a 500.",
+            "title": "Rerank",
+            "type": "boolean"
+          },
+          "use_query_plan": {
+            "default": true,
+            "title": "Use Query Plan",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "queries"
+        ],
+        "title": "NaiveBatchRequest",
+        "type": "object"
+      },
+      "NaiveRetrieveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "params": {
+            "$ref": "#/components/schemas/NaiveSearchParams"
+          },
+          "query": {
+            "description": "Search query",
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "rerank": {
+            "default": true,
+            "description": "Use the configured reranker. A no-op when the deployment has none; a failing one degrades to the un-reranked order rather than a 500.",
+            "title": "Rerank",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "NaiveRetrieveRequest",
+        "type": "object"
+      },
+      "NaiveSearchParams": {
+        "properties": {
+          "rerank_top_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Top K"
+          },
+          "top_k": {
+            "default": 20,
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "title": "NaiveSearchParams",
+        "type": "object"
+      },
+      "NaiveSearchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 2,
+                "pattern": "^[A-Za-z][A-Za-z \\-]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Answer language, e.g. 'russian'. Defaults to RAGU_API_LANGUAGE.",
+            "title": "Language"
+          },
+          "params": {
+            "$ref": "#/components/schemas/NaiveSearchParams",
+            "description": "NaiveSearchEngine retrieval parameters: top_k, rerank_top_k"
+          },
+          "query": {
+            "description": "Search query",
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "rerank": {
+            "default": true,
+            "description": "Use the configured reranker. A no-op when the deployment has none; a failing one degrades to the un-reranked order rather than a 500.",
+            "title": "Rerank",
+            "type": "boolean"
+          },
+          "use_query_plan": {
+            "default": true,
+            "description": "Decompose the query into subqueries",
+            "title": "Use Query Plan",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "NaiveSearchRequest",
+        "type": "object"
+      },
+      "Neighborhood": {
+        "description": "One entity and everything within ``depth`` hops of it.\n\nPositions are not returned: a client laying the graph out knows its own\nviewport and does the layout itself.",
+        "properties": {
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/EntityItem"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "relations": {
+            "items": {
+              "$ref": "#/components/schemas/RelationItem"
+            },
+            "title": "Relations",
+            "type": "array"
+          },
+          "root": {
+            "title": "Root",
+            "type": "string"
+          },
+          "truncated": {
+            "default": false,
+            "description": "The neighbourhood hit the node ceiling and was cut short",
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "root",
+          "depth"
+        ],
+        "title": "Neighborhood",
+        "type": "object"
+      },
+      "OntologyResponse": {
+        "description": "The entity and relation types the extractors work with.",
+        "properties": {
+          "entity_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Types",
+            "type": "array"
+          },
+          "relation_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Relation Types",
+            "type": "array"
+          }
+        },
+        "title": "OntologyResponse",
+        "type": "object"
+      },
+      "PageInfo": {
+        "description": "Where a listing sits in the whole.",
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Items matching the filter, before paging",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "PageInfo",
+        "type": "object"
+      },
+      "RelationItem": {
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "object_id": {
+            "title": "Object Id",
+            "type": "string"
+          },
+          "object_name": {
+            "title": "Object Name",
+            "type": "string"
+          },
+          "source_chunk_ids": {
+            "description": "Chunks this relation was extracted from",
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Chunk Ids",
+            "type": "array"
+          },
+          "strength": {
+            "default": 1.0,
+            "title": "Strength",
+            "type": "number"
+          },
+          "subject_id": {
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "subject_id",
+          "object_id",
+          "subject_name",
+          "object_name",
+          "type"
+        ],
+        "title": "RelationItem",
+        "type": "object"
+      },
+      "RelationMeta": {
+        "description": "The typed fields behind a relation source.",
+        "properties": {
+          "kind": {
+            "const": "relation",
+            "default": "relation",
+            "title": "Kind",
+            "type": "string"
+          },
+          "object_id": {
+            "title": "Object Id",
+            "type": "string"
+          },
+          "object_name": {
+            "title": "Object Name",
+            "type": "string"
+          },
+          "source_chunk_ids": {
+            "description": "Chunks this relation was extracted from",
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Chunk Ids",
+            "type": "array"
+          },
+          "strength": {
+            "default": 1.0,
+            "title": "Strength",
+            "type": "number"
+          },
+          "subject_id": {
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject_id",
+          "object_id",
+          "subject_name",
+          "object_name",
+          "type"
+        ],
+        "title": "RelationMeta",
+        "type": "object"
+      },
+      "RelationPage": {
+        "properties": {
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          },
+          "relations": {
+            "items": {
+              "$ref": "#/components/schemas/RelationItem"
+            },
+            "title": "Relations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "title": "RelationPage",
+        "type": "object"
+      },
+      "RelationSelectRequest": {
+        "additionalProperties": false,
+        "description": "Relations restricted to a set of entities.\n\nA POST rather than a query string: an entity id is 36 characters, so five\nhundred of them make a URL of roughly 24 KB — past the 8 KB request line\nmost servers accept. The set is the body instead.",
+        "properties": {
+          "edge_scope": {
+            "default": "induced",
+            "description": "'induced' keeps a relation only when BOTH ends are in the set — the induced subgraph a canvas draws. 'incident' keeps it when either end is, which is what expanding a neighbourhood needs.",
+            "enum": [
+              "induced",
+              "incident"
+            ],
+            "title": "Edge Scope",
+            "type": "string"
+          },
+          "entity_ids": {
+            "description": "Entities the selection is restricted to. An id the graph does not hold is skipped rather than failing the request.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Entity Ids",
+            "type": "array"
+          },
+          "limit": {
+            "default": 500,
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "min_strength": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Keep only relations at least this strong",
+            "title": "Min Strength"
+          },
+          "offset": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity_ids"
+        ],
+        "title": "RelationSelectRequest",
+        "type": "object"
+      },
+      "RetrieveResponse": {
+        "description": "Context gathered for a query, with no answer generated for it.",
+        "properties": {
+          "engines": {
+            "$ref": "#/components/schemas/EngineReport",
+            "description": "What actually ran, including child-engine failures"
+          },
+          "mode": {
+            "enum": [
+              "global",
+              "local",
+              "naive",
+              "mix"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceItem"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UsageModel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What this request cost, by stage"
+          }
+        },
+        "required": [
+          "query",
+          "mode",
+          "engines"
+        ],
+        "title": "RetrieveResponse",
+        "type": "object"
+      },
+      "SearchResponse": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "engines": {
+            "$ref": "#/components/schemas/EngineReport",
+            "description": "What actually ran, including child-engine failures"
+          },
+          "mode": {
+            "enum": [
+              "global",
+              "local",
+              "naive",
+              "mix"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceItem"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "subqueries": {
+            "items": {
+              "$ref": "#/components/schemas/SubqueryItem"
+            },
+            "title": "Subqueries",
+            "type": "array"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UsageModel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What this request cost, by stage"
+          },
+          "used_query_plan": {
+            "title": "Used Query Plan",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query",
+          "mode",
+          "used_query_plan",
+          "answer",
+          "engines"
+        ],
+        "title": "SearchResponse",
+        "type": "object"
+      },
+      "SourceItem": {
+        "properties": {
+          "content": {
+            "default": "",
+            "description": "Source text",
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "description": "Stable source identifier, e.g. chunk_42 or community_3",
+            "title": "Id",
+            "type": "string"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "chunk": "#/components/schemas/ChunkMeta",
+                    "community_summary": "#/components/schemas/CommunityMeta",
+                    "entity": "#/components/schemas/EntityMeta",
+                    "relation": "#/components/schemas/RelationMeta"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/EntityMeta"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelationMeta"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChunkMeta"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CommunityMeta"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Typed fields for this source kind, so a client need not fetch each source again to learn what it is",
+            "title": "Meta"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Retrieval score when the engine provides one",
+            "title": "Score"
+          },
+          "type": {
+            "description": "Source kind: chunk, entity, relation, community_summary",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ],
+        "title": "SourceItem",
+        "type": "object"
+      },
+      "StageUsageModel": {
+        "description": "What one stage of a request cost.",
+        "properties": {
+          "calls": {
+            "default": 0,
+            "title": "Calls",
+            "type": "integer"
+          },
+          "completion_tokens": {
+            "default": 0,
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "generation_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Wall time spent in the LLM, in milliseconds",
+            "title": "Generation Ms"
+          },
+          "prompt_tokens": {
+            "default": 0,
+            "title": "Prompt Tokens",
+            "type": "integer"
+          },
+          "retrieval_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Wall time spent retrieving, in milliseconds",
+            "title": "Retrieval Ms"
+          }
+        },
+        "title": "StageUsageModel",
+        "type": "object"
+      },
+      "SubqueryItem": {
+        "properties": {
+          "answer": {
+            "default": "",
+            "description": "Intermediate answer to the subquery",
+            "title": "Answer",
+            "type": "string"
+          },
+          "query": {
+            "description": "Subquery produced by the query plan",
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "SubqueryItem",
+        "type": "object"
+      },
+      "UsageModel": {
+        "description": "What a request cost, by stage.\n\nToken counts are measured with the tokenizer rather than read from the\nprovider — the LLM clients return the parsed answer, not the raw response —\nso they are close, not exact. Price from your provider's bill, not from here.",
+        "properties": {
+          "calls": {
+            "default": 0,
+            "title": "Calls",
+            "type": "integer"
+          },
+          "completion_tokens": {
+            "default": 0,
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "estimated": {
+            "default": true,
+            "description": "Token counts are measured locally, not billed",
+            "title": "Estimated",
+            "type": "boolean"
+          },
+          "prompt_tokens": {
+            "default": 0,
+            "title": "Prompt Tokens",
+            "type": "integer"
+          },
+          "stages": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/StageUsageModel"
+            },
+            "title": "Stages",
+            "type": "object"
+          },
+          "total_tokens": {
+            "default": 0,
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "title": "UsageModel",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Graph-RAG over one or more knowledge graphs.\n\nFour search modes — `global`, `local`, `naive`, `mix` — each in four shapes: an answer, retrieval without generation, a batch, and a Server-Sent Events stream. Graphs are addressed by name under `/v1/graphs/{graph_id}`; the flat `/v1/search/...` paths address the default graph and are kept for older clients.\n\nEvery response reports what actually ran (`engines`) and what it cost (`usage`). Errors share one envelope and carry `request_id`.",
+    "title": "RAGU Service",
+    "version": "0.0.5"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "Report readiness with a 200 regardless, for probes that read the body.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "description": "Liveness: the process is up and serving. Always 200 while it can answer.",
+        "operationId": "health_live_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Live",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Readiness: 200 only when searches can actually be served, 503 otherwise.\n\nLoading a large graph takes minutes, so an orchestrator needs this split\nfrom liveness to avoid restarting a service that is still starting up.",
+        "operationId": "health_ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Graph not loaded"
+          }
+        },
+        "summary": "Health Ready",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/v1/graphs": {
+      "get": {
+        "description": "Every graph this service serves, with its sizes and available modes.",
+        "operationId": "list_graphs_v1_graphs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Graphs",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}": {
+      "get": {
+        "operationId": "get_graph_v1_graphs__graph_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Graph",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/capabilities": {
+      "get": {
+        "description": "Which search modes this graph can serve, and why the others cannot.",
+        "operationId": "graph_capabilities_v1_graphs__graph_id__capabilities_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ModeAvailability"
+                  },
+                  "title": "Response Graph Capabilities V1 Graphs  Graph Id  Capabilities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph Capabilities",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/chunks": {
+      "get": {
+        "description": "Source chunks, for resolving the ids a search answer cites in one call.",
+        "operationId": "list_chunks_v1_graphs__graph_id__chunks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Fetch exactly these chunks, skipping the unknown",
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fetch exactly these chunks, skipping the unknown",
+              "title": "Ids"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Chunks",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/chunks/{chunk_id}": {
+      "get": {
+        "description": "One source chunk, for tracing an answer back to the corpus.",
+        "operationId": "get_chunk_v1_graphs__graph_id__chunks__chunk_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chunk_id",
+            "required": true,
+            "schema": {
+              "title": "Chunk Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Chunk",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/communities": {
+      "get": {
+        "operationId": "list_communities_v1_graphs__graph_id__communities_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Leiden level",
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Leiden level",
+              "title": "Level"
+            }
+          },
+          {
+            "description": "Fetch exactly these communities, skipping the unknown",
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fetch exactly these communities, skipping the unknown",
+              "title": "Ids"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Communities",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/communities/{community_id}": {
+      "get": {
+        "operationId": "get_community_v1_graphs__graph_id__communities__community_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "community_id",
+            "required": true,
+            "schema": {
+              "title": "Community Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Community",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/consistency": {
+      "get": {
+        "description": "Audit the graph's cross-storage invariants.",
+        "operationId": "graph_consistency_v1_graphs__graph_id__consistency_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyReportModel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph Consistency",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/documents": {
+      "post": {
+        "description": "Add documents to a graph, as a job.\n\nBuilding takes minutes to hours, which no request can hold open, so this\nanswers 202 with a job to poll. Searches on this graph answer 409 while it\nruns: the build writes into the stores they read.\n\nSend ``Idempotency-Key`` so a retry does not build the same corpus twice.",
+        "operationId": "add_documents_v1_graphs__graph_id__documents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph does not accept documents"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such job or graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Documents",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/entities": {
+      "get": {
+        "operationId": "list_entities_v1_graphs__graph_id__entities_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Exact entity type",
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact entity type",
+              "title": "Type"
+            }
+          },
+          {
+            "description": "Substring of the name",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Substring of the name",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Only entities in this community",
+            "in": "query",
+            "name": "community_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only entities in this community",
+              "title": "Community Id"
+            }
+          },
+          {
+            "description": "Sort key; storage order when omitted",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "degree",
+                    "name"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Sort key; storage order when omitted",
+              "title": "Sort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fetch exactly these entities. Every other filter and the paging are ignored, and an unknown id is skipped rather than failing the selection.",
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fetch exactly these entities. Every other filter and the paging are ignored, and an unknown id is skipped rather than failing the selection.",
+              "title": "Ids"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Entities",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/entities/{entity_id}": {
+      "get": {
+        "description": "One entity, without having to ask for its neighbourhood to find it.",
+        "operationId": "get_entity_v1_graphs__graph_id__entities__entity_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Entity",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/entities/{entity_id}/neighbors": {
+      "get": {
+        "description": "Everything within ``depth`` hops, for drawing a piece of the graph.\n\nCoordinates are not returned: the client knows its own viewport and lays the\ngraph out itself.",
+        "operationId": "entity_neighbors_v1_graphs__graph_id__entities__entity_id__neighbors_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 4,
+              "minimum": 1,
+              "title": "Depth",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 2000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Neighborhood"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Entity Neighbors",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/reindex/{kind}": {
+      "post": {
+        "description": "Rebuild communities, descriptions or the whole graph, as a job.\n\nReindexing writes into the stores searches read, so it takes the same write\nlock ingestion does and the graph answers 409 GRAPH_BUSY while it runs.",
+        "operationId": "reindex_graph_v1_graphs__graph_id__reindex__kind__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph does not accept documents"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such job or graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reindex Graph",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/relations": {
+      "get": {
+        "operationId": "list_relations_v1_graphs__graph_id__relations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_strength",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Strength"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Relations",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/relations/select": {
+      "post": {
+        "description": "Relations restricted to a set of entities.\n\nA canvas showing N entities needs the relations *between* them — the induced\nsubgraph. Anything else draws edges running off to nodes that are not on\nscreen. The set travels in the body because five hundred 36-character ids\nmake a URL no server will accept.",
+        "operationId": "select_relations_v1_graphs__graph_id__relations_select_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationSelectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Select Relations",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/global": {
+      "post": {
+        "operationId": "search_global_v1_graphs__graph_id__search_global_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Search Global",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/global/batch": {
+      "post": {
+        "operationId": "batch_global_v1_graphs__graph_id__search_global_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Batch Global",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/global/retrieve": {
+      "post": {
+        "operationId": "retrieve_global_v1_graphs__graph_id__search_global_retrieve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalRetrieveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Retrieve Global",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/global/stream": {
+      "post": {
+        "operationId": "stream_global_v1_graphs__graph_id__search_global_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Stream Global",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/local": {
+      "post": {
+        "operationId": "search_local_v1_graphs__graph_id__search_local_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Search Local",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/local/batch": {
+      "post": {
+        "operationId": "batch_local_v1_graphs__graph_id__search_local_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Batch Local",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/local/retrieve": {
+      "post": {
+        "operationId": "retrieve_local_v1_graphs__graph_id__search_local_retrieve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalRetrieveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Retrieve Local",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/local/stream": {
+      "post": {
+        "operationId": "stream_local_v1_graphs__graph_id__search_local_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Stream Local",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/mix": {
+      "post": {
+        "description": "Ensemble the local and naive engines over one query.\n\nChild failures are tolerated by the ensemble, so ``engines`` in the response\nreports which children actually contributed.",
+        "operationId": "search_mix_v1_graphs__graph_id__search_mix_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MixSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Search Mix",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/mix/batch": {
+      "post": {
+        "operationId": "batch_mix_v1_graphs__graph_id__search_mix_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MixBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Batch Mix",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/mix/retrieve": {
+      "post": {
+        "description": "Gather context from both child engines without generating an answer.",
+        "operationId": "retrieve_mix_v1_graphs__graph_id__search_mix_retrieve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MixRetrieveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Retrieve Mix",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/mix/stream": {
+      "post": {
+        "operationId": "stream_mix_v1_graphs__graph_id__search_mix_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MixSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Stream Mix",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/naive": {
+      "post": {
+        "operationId": "search_naive_v1_graphs__graph_id__search_naive_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NaiveSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Search Naive",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/naive/batch": {
+      "post": {
+        "description": "Answer many queries in one pass.\n\nThis is where the engines earn their keep: retrieval is shared across the\nwhole list and, with a query plan, independent subqueries from different\ntop-level queries are answered in the same child batch.",
+        "operationId": "batch_naive_v1_graphs__graph_id__search_naive_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NaiveBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Batch Naive",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/naive/retrieve": {
+      "post": {
+        "operationId": "retrieve_naive_v1_graphs__graph_id__search_naive_retrieve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NaiveRetrieveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Retrieve Naive",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/search/naive/stream": {
+      "post": {
+        "description": "Stream the answer as Server-Sent Events.\n\nOne ``meta`` event carries the retrieval and the engine report, then\n``delta`` events carry the text, then ``done`` closes with the final engine\nreport. A failure after the headers are sent arrives as an ``error`` event.",
+        "operationId": "stream_naive_v1_graphs__graph_id__search_naive_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NaiveSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Stream Naive",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/graphs/{graph_id}/stats": {
+      "get": {
+        "description": "Sizes, embedding dimension and which modes this corpus can serve.",
+        "operationId": "graph_stats_v1_graphs__graph_id__stats_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "graph_id",
+            "required": true,
+            "schema": {
+              "title": "Graph Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph Stats",
+        "tags": [
+          "graphs"
+        ]
+      }
+    },
+    "/v1/jobs": {
+      "get": {
+        "description": "Every job this process knows about, newest first.",
+        "operationId": "list_jobs_v1_jobs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "graph_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Graph Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Jobs",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/jobs/{job_id}": {
+      "delete": {
+        "description": "Ask a running job to stop. A finished job is returned unchanged.",
+        "operationId": "cancel_job_v1_jobs__job_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph does not accept documents"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such job or graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Job",
+        "tags": [
+          "jobs"
+        ]
+      },
+      "get": {
+        "operationId": "get_job_v1_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph does not accept documents"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No such job or graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/v1/ontology": {
+      "get": {
+        "description": "The NEREL entity and relation types the extractors work with.",
+        "operationId": "ontology_v1_ontology_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OntologyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ontology",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/v1/search/global": {
+      "post": {
+        "deprecated": true,
+        "operationId": "search_global_v1_search_global_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Search Global",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/global/batch": {
+      "post": {
+        "deprecated": true,
+        "operationId": "batch_global_v1_search_global_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Batch Global",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/global/retrieve": {
+      "post": {
+        "deprecated": true,
+        "operationId": "retrieve_global_v1_search_global_retrieve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalRetrieveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Retrieve Global",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/global/stream": {
+      "post": {
+        "deprecated": true,
+        "operationId": "stream_global_v1_search_global_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Stream Global",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/local": {
+      "post": {
+        "deprecated": true,
+        "operationId": "search_local_v1_search_local_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Search Local",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/local/batch": {
+      "post": {
+        "deprecated": true,
+        "operationId": "batch_local_v1_search_local_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Batch Local",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/local/retrieve": {
+      "post": {
+        "deprecated": true,
+        "operationId": "retrieve_local_v1_search_local_retrieve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalRetrieveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Retrieve Local",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/local/stream": {
+      "post": {
+        "deprecated": true,
+        "operationId": "stream_local_v1_search_local_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Stream Local",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/mix": {
+      "post": {
+        "deprecated": true,
+        "description": "Ensemble the local and naive engines over one query.\n\nChild failures are tolerated by the ensemble, so ``engines`` in the response\nreports which children actually contributed.",
+        "operationId": "search_mix_v1_search_mix_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MixSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Search Mix",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/mix/batch": {
+      "post": {
+        "deprecated": true,
+        "operationId": "batch_mix_v1_search_mix_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MixBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Batch Mix",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/mix/retrieve": {
+      "post": {
+        "deprecated": true,
+        "description": "Gather context from both child engines without generating an answer.",
+        "operationId": "retrieve_mix_v1_search_mix_retrieve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MixRetrieveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Retrieve Mix",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/mix/stream": {
+      "post": {
+        "deprecated": true,
+        "operationId": "stream_mix_v1_search_mix_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MixSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Stream Mix",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/naive": {
+      "post": {
+        "deprecated": true,
+        "operationId": "search_naive_v1_search_naive_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NaiveSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Search Naive",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/naive/batch": {
+      "post": {
+        "deprecated": true,
+        "description": "Answer many queries in one pass.\n\nThis is where the engines earn their keep: retrieval is shared across the\nwhole list and, with a query plan, independent subqueries from different\ntop-level queries are answered in the same child batch.",
+        "operationId": "batch_naive_v1_search_naive_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NaiveBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Batch Naive",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/naive/retrieve": {
+      "post": {
+        "deprecated": true,
+        "operationId": "retrieve_naive_v1_search_naive_retrieve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NaiveRetrieveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Retrieve Naive",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/v1/search/naive/stream": {
+      "post": {
+        "deprecated": true,
+        "description": "Stream the answer as Server-Sent Events.\n\nOne ``meta`` event carries the retrieval and the engine report, then\n``delta`` events carry the text, then ``done`` closes with the final engine\nreport. A failure after the headers are sent arrives as an ``error`` event.",
+        "operationId": "stream_naive_v1_search_naive_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NaiveSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Capability unavailable for this graph"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Graph is not loaded / service not ready"
+          }
+        },
+        "summary": "Stream Naive",
+        "tags": [
+          "search"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "Answering questions against a graph.",
+      "name": "search"
+    },
+    {
+      "description": "The catalogue, and reads of graph structure.",
+      "name": "graphs"
+    },
+    {
+      "description": "Ingestion and reindexing, which run too long for a request.",
+      "name": "jobs"
+    },
+    {
+      "description": "Probes, metrics and the ontology.",
+      "name": "service"
+    }
+  ]
+}

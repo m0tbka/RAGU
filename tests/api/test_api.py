@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pathlib
+
 import pytest
 
 pytest.importorskip(
@@ -3817,3 +3819,69 @@ class TestPageCeiling:
             )
         assert response.status_code == 400
         assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+
+class TestCommittedSchema:
+    """
+    The OpenAPI schema lives in the repository, and cannot go stale.
+
+    Generated from the routes and the models, so it never disagrees with the
+    code — but while it exists only in a running process, a change to the
+    contract is invisible in review and a consumer has to boot the service to
+    generate a client. Committing it fixes both; this test is what keeps the
+    committed copy honest.
+    """
+
+    @staticmethod
+    def _committed() -> tuple[pathlib.Path, str]:
+        import ragu
+
+        path = pathlib.Path(ragu.__file__).resolve().parent.parent / "docs" / "openapi.json"
+        return path, path.read_text(encoding="utf-8")
+
+    def test_the_committed_schema_matches_the_code(self):
+        from ragu.api.app import openapi_document
+
+        path, committed = self._committed()
+        current = openapi_document()
+
+        assert committed == current, (
+            f"{path} is out of date with the routes and models.\n"
+            "Regenerate it:\n"
+            "    python -m ragu.api --dump-openapi docs/openapi.json"
+        )
+
+    def test_the_schema_is_deterministic(self):
+        # Two runs must agree, or every commit carries a spurious diff.
+        from ragu.api.app import openapi_document
+
+        assert openapi_document() == openapi_document()
+
+    def test_the_schema_is_not_shaped_by_the_environment(self, monkeypatch):
+        # Built against stub settings on purpose: a developer's own RAGU_API_*
+        # must not change what lands in the file.
+        from ragu.api.app import openapi_document
+
+        before = openapi_document()
+        monkeypatch.setenv("RAGU_API_BACKEND", "ragu")
+        monkeypatch.setenv("RAGU_API_MAX_TOP_K", "7")
+        monkeypatch.setenv("RAGU_API_LANGUAGE", "english")
+        assert openapi_document() == before
+
+    def test_it_describes_every_operation_the_app_serves(self):
+        import json
+
+        from ragu.api.app import openapi_document
+
+        schema = json.loads(openapi_document())
+        operations = [
+            (path, method)
+            for path, item in schema["paths"].items()
+            for method in item
+            if method in ("get", "post", "put", "delete", "patch")
+        ]
+        assert len(operations) == 55
+        # The routes a consumer is most likely to generate a client for.
+        assert ("/v1/search/local", "post") in operations
+        assert ("/v1/graphs/{graph_id}/relations/select", "post") in operations
+        assert schema["info"]["version"]

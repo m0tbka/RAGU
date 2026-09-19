@@ -52,8 +52,23 @@ python -m ragu.api --backend ragu --storage-folder ragu_working_dir
 ```
 
 `--host`, `--port`, `--backend` and `--storage-folder` override the
-corresponding environment variables on the command line. Interactive API docs
-are at `/docs`.
+corresponding environment variables on the command line.
+
+### The API schema
+
+The schema lives in the repository: [`docs/openapi.json`](../openapi.json) — 55
+operations, 58 models. It is generated, never hand-written:
+
+```bash
+python -m ragu.api --dump-openapi docs/openapi.json
+```
+
+`tests/api` compares it against the live application and fails with that same
+command when the two disagree. That is what makes a contract change visible as a
+diff in review, and lets a consumer generate a client without booting anything.
+
+A running service serves the same schema at `/openapi.json`, `/docs` (Swagger
+UI) and `/redoc` — all three without a key.
 
 With Docker, `docker compose up -d ragu-api` builds the image from the
 repository root and mounts a prebuilt graph at `/data/graph`. The deployment
