@@ -3418,3 +3418,169 @@ class TestStageTimings:
         # The stub makes no LLM calls, so there is nothing to attribute; the
         # fields exist and stay null rather than reporting a fabricated zero.
         assert "stages" in usage
+
+
+class TestEventLoopIsNotBlocked:
+    """
+    Whole-corpus passes run off the event loop.
+
+    The service is async so that it can keep answering while it waits on the
+    models. Walking every entity and every relation is not waiting — it is pure
+    CPU, and on the loop it is time in which nothing is served, /health least of
+    all. These pin the work to a worker thread by identity, not by timing, so
+    they do not flake on a loaded machine.
+    """
+
+    @staticmethod
+    def _graph_backend(entities=8, relations=12):
+        from ragu.graph.types import Entity, Relation
+
+        nodes = [
+            Entity(
+                entity_name=f"Сущность {i}",
+                entity_type="PERSON" if i % 2 else "ORG",
+                description="d",
+                source_chunk_id=[],
+                clusters=[{"cluster_id": i % 3, "level": 0}],
+            )
+            for i in range(entities)
+        ]
+        edges = [
+            Relation(
+                subject_id=nodes[i % entities].id,
+                object_id=nodes[(i * 3) % entities].id,
+                subject_name="a",
+                object_name="b",
+                relation_type="rel",
+                description="d",
+                relation_strength=1.0,
+                source_chunk_id=[],
+            )
+            for i in range(relations)
+        ]
+        backend = make_backend()
+        backend.graph = object()
+        backend._llm = object()
+        backend._embedder = object()
+        backend._node_cache = nodes
+        backend._edge_cache = edges
+        return backend, nodes, edges
+
+    async def test_filtering_and_sorting_leave_the_loop(self, monkeypatch):
+        import threading
+
+        backend, _, _ = self._graph_backend()
+        loop_thread = threading.get_ident()
+        ran_on = []
+
+        import ragu.api.backends.ragu_backend as module
+
+        original = module._select_entities
+
+        def spy(*args, **kwargs):
+            ran_on.append(threading.get_ident())
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(module, "_select_entities", spy)
+        await backend.list_entities(limit=5, offset=0, sort="name")
+
+        assert ran_on, "_select_entities was not called at all"
+        assert loop_thread not in ran_on, "the sort ran on the event loop"
+
+    async def test_counting_degrees_leaves_the_loop(self, monkeypatch):
+        import threading
+
+        backend, _, _ = self._graph_backend()
+        loop_thread = threading.get_ident()
+        ran_on = []
+
+        import ragu.api.backends.ragu_backend as module
+
+        original = module._count_degrees
+
+        def spy(edges):
+            ran_on.append(threading.get_ident())
+            return original(edges)
+
+        monkeypatch.setattr(module, "_count_degrees", spy)
+        await backend._degrees()
+
+        assert ran_on and loop_thread not in ran_on
+
+    async def test_plain_paging_does_not_pay_for_a_thread(self, monkeypatch):
+        # Nothing to filter and nothing to sort: the hop would cost a context
+        # switch and buy nothing.
+        backend, nodes, _ = self._graph_backend()
+        called = []
+
+        import ragu.api.backends.ragu_backend as module
+
+        monkeypatch.setattr(
+            module, "_select_entities", lambda *a, **k: called.append(1) or []
+        )
+        total, page = await backend.list_entities(limit=3, offset=0)
+
+        assert not called
+        assert total == len(nodes)
+        assert len(page) == 3
+
+    async def test_the_degree_map_is_built_once(self):
+        backend, _, edges = self._graph_backend()
+        first = await backend._degrees()
+        second = await backend._degrees()
+        assert first is second
+
+        backend._drop_graph_cache()
+        assert backend._degree_cache is None
+
+
+class TestEntitySelection:
+    """The pure function behind the entity listing, tested without a loop."""
+
+    @staticmethod
+    def _nodes():
+        from ragu.graph.types import Entity
+
+        return [
+            Entity(entity_name="Борис", entity_type="PERSON", description="d",
+                   source_chunk_id=[], clusters=[{"cluster_id": 1, "level": 0}]),
+            Entity(entity_name="Анна", entity_type="PERSON", description="d",
+                   source_chunk_id=[], clusters=[{"cluster_id": 2, "level": 0}]),
+            Entity(entity_name="Ватикан", entity_type="ORG", description="d",
+                   source_chunk_id=[], clusters=[]),
+        ]
+
+    def test_filters_compose(self):
+        from ragu.api.backends.ragu_backend import _select_entities
+
+        nodes = self._nodes()
+        assert [n.entity_name for n in _select_entities(
+            nodes, "PERSON", None, None, None, "asc", None)] == ["Борис", "Анна"]
+        assert [n.entity_name for n in _select_entities(
+            nodes, None, "ан", None, None, "asc", None)] == ["Анна", "Ватикан"]
+        assert [n.entity_name for n in _select_entities(
+            nodes, None, None, "1", None, "asc", None)] == ["Борис"]
+
+    def test_sorting_by_name_is_case_folded(self):
+        from ragu.api.backends.ragu_backend import _select_entities
+
+        names = [n.entity_name for n in _select_entities(
+            self._nodes(), None, None, None, "name", "asc", None)]
+        assert names == ["Анна", "Борис", "Ватикан"]
+
+    def test_sorting_by_degree_puts_the_busiest_first(self):
+        from ragu.api.backends.ragu_backend import _select_entities
+
+        nodes = self._nodes()
+        degrees = {nodes[0].id: 1, nodes[1].id: 9, nodes[2].id: 4}
+        ordered = _select_entities(nodes, None, None, None, "degree", "desc", degrees)
+        assert [n.entity_name for n in ordered] == ["Анна", "Ватикан", "Борис"]
+
+    def test_counting_degrees_counts_both_ends(self):
+        from ragu.api.backends.ragu_backend import _count_degrees
+        from ragu.graph.types import Relation
+
+        edge = Relation(subject_id="a", object_id="b", subject_name="a",
+                        object_name="b", relation_type="r", description="d",
+                        relation_strength=1.0, source_chunk_id=[])
+        assert _count_degrees([edge, edge]) == {"a": 2, "b": 2}

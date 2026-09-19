@@ -121,6 +121,63 @@ async def exclusive_settings() -> AsyncIterator[None]:
             yield
 
 
+def _count_degrees(edges: list[Any]) -> dict[str, int]:
+    """
+    How many relations touch each entity id.
+
+    :param edges: Every relation in the graph.
+    :return: Entity id to the number of relations touching it.
+    """
+    degrees: dict[str, int] = {}
+    for edge in edges:
+        for side in (edge.subject_id, edge.object_id):
+            degrees[side] = degrees.get(side, 0) + 1
+    return degrees
+
+
+def _select_entities(
+    nodes: list[Any],
+    entity_type: str | None,
+    search: str | None,
+    community_id: str | None,
+    sort: str | None,
+    order: str,
+    degrees: dict[str, int] | None,
+) -> list[Any]:
+    """
+    Filter and order the whole entity list.
+
+    Pure CPU over a materialized list, kept in one function so the caller pays
+    a single hop off the event loop rather than one per step.
+
+    :param nodes: Every entity in the graph.
+    :param entity_type: Keep only this exact type.
+    :param search: Keep only names containing this substring.
+    :param community_id: Keep only members of this community.
+    :param sort: ``degree``, ``name`` or ``None`` for storage order.
+    :param order: ``asc`` or ``desc``.
+    :param degrees: Degree map, required when sorting by degree.
+    :return: The filtered, ordered list.
+    """
+    if entity_type:
+        wanted = entity_type.casefold()
+        nodes = [n for n in nodes if (n.entity_type or "").casefold() == wanted]
+    if search:
+        needle = search.casefold()
+        nodes = [n for n in nodes if needle in (n.entity_name or "").casefold()]
+    if community_id is not None:
+        nodes = [n for n in nodes if community_id in _cluster_ids(n)]
+
+    if sort == "name":
+        nodes = sorted(
+            nodes, key=lambda n: (n.entity_name or "").casefold(), reverse=order == "desc"
+        )
+    elif sort == "degree":
+        counts = degrees or {}
+        nodes = sorted(nodes, key=lambda n: counts.get(n.id, 0), reverse=order == "desc")
+    return nodes
+
+
 def _cluster_ids(entity: Any) -> set[str]:
     """
     The community ids an entity belongs to, as the wire spells them.
@@ -485,17 +542,25 @@ class RaguBackend(SearchBackend):
             found = await self._entities_by_id(ids)
             return len(found), found
 
+        if sort not in (None, "degree", "name"):
+            raise InvalidRequestError(
+                f"Unknown sort '{sort}'. Expected 'degree' or 'name'."
+            )
+
         nodes = await self._nodes()
-        if entity_type:
-            wanted = entity_type.casefold()
-            nodes = [n for n in nodes if (n.entity_type or "").casefold() == wanted]
-        if search:
-            needle = search.casefold()
-            nodes = [n for n in nodes if needle in (n.entity_name or "").casefold()]
-        if community_id is not None:
-            nodes = [n for n in nodes if community_id in _cluster_ids(n)]
-        if sort:
-            nodes = await self._sorted(nodes, sort, order)
+        if not (entity_type or search or community_id is not None or sort):
+            # Plain paging touches nothing, so it does not pay for a thread.
+            return len(nodes), nodes[offset : offset + limit]
+
+        degrees = await self._degrees() if sort == "degree" else None
+        # Filtering and sorting walk the whole corpus: on a graph of tens of
+        # thousands of entities that is a tenth of a second of pure CPU, and on
+        # the event loop it is a tenth of a second in which the service answers
+        # nothing at all — /health included. One hop off the loop, not one per
+        # step, because each hop costs a context switch.
+        nodes = await asyncio.to_thread(
+            _select_entities, nodes, entity_type, search, community_id, sort, order, degrees
+        )
         return len(nodes), nodes[offset : offset + limit]
 
     async def _entities_by_id(self, ids: Sequence[str]) -> list[Any]:
@@ -507,41 +572,18 @@ class RaguBackend(SearchBackend):
         found = await graph.index.graph_backend.get_nodes(wanted)
         return [node for node in found if node is not None]
 
-    async def _sorted(self, nodes: list[Any], sort: str, order: str) -> list[Any]:
-        """
-        Order a filtered entity list.
-
-        Degree is counted from the edge list rather than asked of the storage:
-        the adapters expose no degree, and the edges are materialized anyway for
-        the relation routes.
-        """
-        if sort == "name":
-
-            def key(node: Any) -> Any:
-                return (node.entity_name or "").casefold()
-
-        elif sort == "degree":
-            degrees = await self._degrees()
-
-            def key(node: Any) -> Any:
-                return degrees.get(node.id, 0)
-
-        else:
-            raise InvalidRequestError(
-                f"Unknown sort '{sort}'. Expected 'degree' or 'name'."
-            )
-        return sorted(nodes, key=key, reverse=order == "desc")
-
     async def _degrees(self) -> dict[str, int]:
         """
         How many relations touch each entity.
+
+        Counted from the edge list rather than asked of the storage: the adapter
+        contract exposes degree per *edge*, not per node, and the edges are
+        materialized anyway for the relation routes. The count itself runs off
+        the event loop — it is the single most expensive pass in this class.
         """
         if self._degree_cache is None:
-            degrees: dict[str, int] = {}
-            for edge in await self._edges():
-                for side in (edge.subject_id, edge.object_id):
-                    degrees[side] = degrees.get(side, 0) + 1
-            self._degree_cache = degrees
+            edges = await self._edges()
+            self._degree_cache = await asyncio.to_thread(_count_degrees, edges)
         return self._degree_cache
 
     async def get_entity(self, entity_id: str) -> Any:
