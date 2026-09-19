@@ -503,6 +503,12 @@ class JobListResponse(BaseModel):
     jobs: list[JobResponse] = Field(default_factory=list)
 
 
+# The largest page any listing will return. A consumer that has to export a
+# corpus pages through tens of thousands of rows, and 500 at a time turns that
+# into a hundred round trips.
+MAX_PAGE_LIMIT = 5000
+
+
 class PageInfo(BaseModel):
     """
     Where a listing sits in the whole.
@@ -548,6 +554,41 @@ class RelationItem(BaseModel):
 class EntityPage(BaseModel):
     page: PageInfo
     entities: list[EntityItem] = Field(default_factory=list)
+
+
+# How many entities one selection may name. Ten thousand ids is about 400 KB of
+# body, well inside the default 32 MiB ceiling.
+MAX_SELECT_IDS = 10_000
+
+
+class RelationSelectRequest(BaseModel):
+    """
+    Relations restricted to a set of entities.
+
+    A POST rather than a query string: an entity id is 36 characters, so five
+    hundred of them make a URL of roughly 24 KB — past the 8 KB request line
+    most servers accept. The set is the body instead.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    entity_ids: list[str] = Field(
+        min_length=1,
+        max_length=MAX_SELECT_IDS,
+        description="Entities the selection is restricted to. An id the graph "
+        "does not hold is skipped rather than failing the request.",
+    )
+    edge_scope: Literal["induced", "incident"] = Field(
+        default="induced",
+        description="'induced' keeps a relation only when BOTH ends are in the "
+        "set — the induced subgraph a canvas draws. 'incident' keeps it when "
+        "either end is, which is what expanding a neighbourhood needs.",
+    )
+    min_strength: float | None = Field(
+        default=None, description="Keep only relations at least this strong"
+    )
+    limit: int = Field(default=500, ge=1, le=MAX_PAGE_LIMIT)
+    offset: int = Field(default=0, ge=0)
 
 
 class RelationPage(BaseModel):

@@ -168,6 +168,7 @@ back to it.
 | `GET /v1/graphs/{id}/entities` | `limit`, `offset`, `type`, `search` (name substring), `community_id`, `sort` (`degree`/`name`), `order`, `ids` |
 | `GET /v1/graphs/{id}/entities/{eid}` | one entity |
 | `GET /v1/graphs/{id}/relations` | `limit`, `offset`, `min_strength` |
+| `POST /v1/graphs/{id}/relations/select` | relations inside a set of entities; body, not query |
 | `GET /v1/graphs/{id}/entities/{eid}/neighbors` | `depth` (1–4), `limit` |
 | `GET /v1/graphs/{id}/communities` | `limit`, `offset`, `level`, `ids` |
 | `GET /v1/graphs/{id}/communities/{cid}` | one community with its members |
@@ -176,6 +177,29 @@ back to it.
 | `GET /v1/graphs/{id}/consistency` | the cross-storage audit |
 | `POST /v1/graphs/{id}/reindex/{kind}` | `community`, `descriptions` or `graph`, as a job |
 | `GET /v1/ontology` | the NEREL entity and relation types |
+
+### The induced subgraph
+
+A canvas shows the N most connected entities and the relations *between* them —
+anything else draws edges running off to nodes that are not on screen. The set
+travels in the body rather than the query string: an entity id is 36 characters,
+so five hundred of them make a URL of roughly 20 KB, past the request line most
+servers accept.
+
+```json
+POST /v1/graphs/books/relations/select
+{"entity_ids": ["ent-…", "ent-…"], "edge_scope": "induced", "limit": 500}
+```
+
+| `edge_scope` | Keeps a relation when | For |
+|---|---|---|
+| `induced` (default) | **both** ends are in the set | the graph canvas |
+| `incident` | **either** end is | expanding a neighbourhood on click |
+
+The ceiling is 10 000 ids, about 400 KB of body against a 32 MiB limit. An
+unknown id is skipped rather than refused: the set comes from a previous answer
+and may have gone stale, and failing the whole selection over one of them is
+worse than drawing the rest. Paging runs over the filtered set.
 
 Neighbourhoods return no coordinates: a client laying the graph out knows its
 own viewport and does the layout itself. A neighbourhood that would exceed
@@ -499,6 +523,7 @@ held open inside this process, one socket and one buffer per waiting request.
 
 | Variable | Default | |
 |---|---|---|
+| `limit` on paged routes | 5000 | the default is still 50 |
 | `RAGU_API_MAX_BODY_BYTES` | 32 MiB | Larger bodies answer `413`, counted as they arrive so a chunked request is bounded too |
 | `RAGU_API_REQUEST_TIMEOUT` | `300` | Longer requests answer `504`; they hold an LLM budget open while they wait |
 | `RAGU_API_CORS_ORIGINS` | — | Comma-separated; empty sends no CORS headers |

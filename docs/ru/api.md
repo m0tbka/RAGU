@@ -167,6 +167,7 @@ RAGU_API_GRAPHS='[{"id":"books","storage_folder":"/data/books","language":"russi
 | `GET /v1/graphs/{id}/entities` | `limit`, `offset`, `type`, `search` (подстрока имени), `community_id`, `sort` (`degree`/`name`), `order`, `ids` |
 | `GET /v1/graphs/{id}/entities/{eid}` | одна сущность |
 | `GET /v1/graphs/{id}/relations` | `limit`, `offset`, `min_strength` |
+| `POST /v1/graphs/{id}/relations/select` | связи внутри набора сущностей; тело, не query |
 | `GET /v1/graphs/{id}/entities/{eid}/neighbors` | `depth` (1–4), `limit` |
 | `GET /v1/graphs/{id}/communities` | `limit`, `offset`, `level`, `ids` |
 | `GET /v1/graphs/{id}/communities/{cid}` | одно сообщество с составом |
@@ -175,6 +176,28 @@ RAGU_API_GRAPHS='[{"id":"books","storage_folder":"/data/books","language":"russi
 | `GET /v1/graphs/{id}/consistency` | кросс-хранилищный аудит |
 | `POST /v1/graphs/{id}/reindex/{kind}` | `community`, `descriptions` или `graph`, задачей |
 | `GET /v1/ontology` | типы сущностей и связей NEREL |
+
+### Индуцированный подграф
+
+Канвас показывает N самых связных сущностей и связи **между ними** — иначе рёбра
+уходят в узлы, которых на экране нет. Набор сущностей едет телом, а не в
+query-строке: идентификатор сущности — 36 символов, пятьсот штук дают URL около
+20 КБ, а это больше строки запроса, которую принимает большинство серверов.
+
+```json
+POST /v1/graphs/books/relations/select
+{"entity_ids": ["ent-…", "ent-…"], "edge_scope": "induced", "limit": 500}
+```
+
+| `edge_scope` | Условие на связь | Для чего |
+|---|---|---|
+| `induced` (по умолчанию) | **оба** конца в наборе | канвас графа |
+| `incident` | **хотя бы один** конец | раскрытие окрестности по клику |
+
+Потолок — 10 000 идентификаторов, это около 400 КБ тела при лимите в 32 МиБ.
+Неизвестный идентификатор молча пропускается: набор приходит из прошлого ответа
+и мог устареть, а отказывать всей выборке из-за одного — хуже, чем нарисовать
+остальное. Пагинация идёт по отфильтрованному набору.
 
 Окрестности не возвращают координат: клиент, который раскладывает граф, знает
 свой вьюпорт и раскладывает сам. Окрестность, выходящая за `limit` узлов,
@@ -502,6 +525,7 @@ async with RaguClient("http://localhost:8020", api_key=KEY, graph="books") as ra
 
 | Переменная | По умолчанию | |
 |---|---|---|
+| `limit` постраничных маршрутов | 5000 | умолчание по-прежнему 50 |
 | `RAGU_API_MAX_BODY_BYTES` | 32 МиБ | Тело больше — `413`; байты считаются по мере поступления, поэтому chunked-запрос тоже ограничен |
 | `RAGU_API_REQUEST_TIMEOUT` | `300` | Запрос дольше — `504`; он всё это время держит открытым бюджет LLM |
 | `RAGU_API_CORS_ORIGINS` | — | Через запятую; пусто — CORS-заголовки не отправляются |

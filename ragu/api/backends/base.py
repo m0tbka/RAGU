@@ -484,6 +484,33 @@ class SearchBackend(ABC):
         """
         raise self._no_surface("its relations")
 
+    async def select_relations(
+        self,
+        *,
+        entity_ids: Sequence[str],
+        edge_scope: str = "induced",
+        min_strength: float | None = None,
+        limit: int,
+        offset: int,
+    ) -> tuple[int, list[Any]]:
+        """
+        Relations restricted to a set of entities.
+
+        A canvas draws the induced subgraph of the entities it shows: relations
+        with *both* ends visible. Anything else leaves edges running off to
+        nodes that are not there. Paging over every relation and filtering on
+        the client is the alternative, and on a large corpus that is a hundred
+        round trips plus a copy of the graph the client then has to invalidate.
+
+        :param entity_ids: Entities the selection is restricted to. An id the
+            graph does not hold is skipped rather than failing the request.
+        :param edge_scope: ``induced`` for both ends in the set, ``incident``
+            for either end.
+        :param min_strength: Keep only relations at least this strong.
+        :return: Total matching before paging, and the page itself.
+        """
+        raise self._no_surface("its relations")
+
     async def neighbors(self, entity_id: str, depth: int, limit: int) -> Any:
         """
         Everything within ``depth`` hops of an entity.

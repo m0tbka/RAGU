@@ -3584,3 +3584,236 @@ class TestEntitySelection:
                         object_name="b", relation_type="r", description="d",
                         relation_strength=1.0, source_chunk_id=[])
         assert _count_degrees([edge, edge]) == {"a": 2, "b": 2}
+
+
+class TestRelationSelection:
+    """
+    Relations restricted to a set of entities.
+
+    A canvas draws the induced subgraph of what it shows; edges to invisible
+    nodes are a rendering bug, and paging every relation to filter on the client
+    is a copy of the graph the client then has to keep fresh.
+    """
+
+    @staticmethod
+    def _backend(entities=10, relations=30):
+        from ragu.graph.types import Entity, Relation
+
+        nodes = [
+            Entity(entity_name=f"E{i}", entity_type="PERSON", description="d",
+                   source_chunk_id=[], clusters=[])
+            for i in range(entities)
+        ]
+        edges = [
+            Relation(
+                subject_id=nodes[i % entities].id,
+                object_id=nodes[(i * 3 + 1) % entities].id,
+                subject_name="a", object_name="b",
+                # Distinct per index: the id is derived from the two ends plus
+                # the type, and a repeated triple is the same relation.
+                relation_type=f"rel-{i}",
+                description="d", relation_strength=float(i % 5),
+                source_chunk_id=[],
+            )
+            for i in range(relations)
+        ]
+        backend = make_backend()
+        backend.graph = object()
+        backend._llm = object()
+        backend._embedder = object()
+        backend._node_cache = nodes
+        backend._edge_cache = edges
+        return backend, nodes, edges
+
+    async def test_induced_keeps_only_relations_with_both_ends_inside(self):
+        backend, nodes, _ = self._backend()
+        chosen = {nodes[0].id, nodes[1].id, nodes[2].id}
+
+        total, page = await backend.select_relations(
+            entity_ids=list(chosen), limit=500, offset=0
+        )
+        assert total == len(page)
+        assert page, "the fixture should contain at least one induced relation"
+        for relation in page:
+            assert relation.subject_id in chosen and relation.object_id in chosen
+
+    async def test_incident_is_a_superset_of_induced(self):
+        backend, nodes, _ = self._backend()
+        chosen = [nodes[0].id, nodes[1].id, nodes[2].id]
+
+        _, induced = await backend.select_relations(
+            entity_ids=chosen, edge_scope="induced", limit=500, offset=0
+        )
+        _, incident = await backend.select_relations(
+            entity_ids=chosen, edge_scope="incident", limit=500, offset=0
+        )
+        assert {r.id for r in induced} <= {r.id for r in incident}
+        assert len(incident) > len(induced)
+
+    async def test_incident_keeps_a_relation_with_one_end_inside(self):
+        backend, nodes, _ = self._backend()
+        total, page = await backend.select_relations(
+            entity_ids=[nodes[0].id], edge_scope="incident", limit=500, offset=0
+        )
+        assert total > 0
+        for relation in page:
+            assert nodes[0].id in (relation.subject_id, relation.object_id)
+
+    async def test_paging_covers_the_filtered_set_exactly_once(self):
+        # The acceptance the consumer asked for: pages sum to the whole result,
+        # with no duplicate and no gap.
+        backend, nodes, _ = self._backend()
+        chosen = [n.id for n in nodes[:6]]
+
+        total, whole = await backend.select_relations(
+            entity_ids=chosen, edge_scope="incident", limit=500, offset=0
+        )
+        collected = []
+        for offset in range(0, total, 4):
+            _, page = await backend.select_relations(
+                entity_ids=chosen, edge_scope="incident", limit=4, offset=offset
+            )
+            collected.extend(r.id for r in page)
+
+        assert collected == [r.id for r in whole]
+        assert len(collected) == len(set(collected)) == total
+
+    async def test_an_unknown_id_is_skipped_not_fatal(self):
+        backend, nodes, _ = self._backend()
+        total, _ = await backend.select_relations(
+            entity_ids=[nodes[0].id, nodes[1].id, "ent-нет-такого"],
+            edge_scope="incident", limit=500, offset=0,
+        )
+        assert total > 0
+
+    async def test_nothing_matching_is_an_empty_page_not_an_error(self):
+        backend, _, _ = self._backend()
+        total, page = await backend.select_relations(
+            entity_ids=["ent-нет-такого"], limit=500, offset=0
+        )
+        assert (total, page) == (0, [])
+
+    async def test_min_strength_applies_to_the_selection(self):
+        backend, nodes, _ = self._backend()
+        chosen = [n.id for n in nodes]
+        _, strong = await backend.select_relations(
+            entity_ids=chosen, min_strength=4.0, limit=500, offset=0
+        )
+        assert strong
+        for relation in strong:
+            assert relation.relation_strength >= 4.0
+
+    async def test_the_membership_pass_leaves_the_event_loop(self, monkeypatch):
+        import threading
+
+        import ragu.api.backends.ragu_backend as module
+
+        backend, nodes, _ = self._backend()
+        loop_thread = threading.get_ident()
+        ran_on = []
+        original = module._select_relations
+
+        def spy(*args):
+            ran_on.append(threading.get_ident())
+            return original(*args)
+
+        monkeypatch.setattr(module, "_select_relations", spy)
+        await backend.select_relations(entity_ids=[nodes[0].id], limit=10, offset=0)
+
+        assert ran_on and loop_thread not in ran_on
+
+
+class TestRelationSelectRoute:
+    """The wire contract of the selection route."""
+
+    def test_the_set_travels_in_the_body(self):
+        with build_client() as client:
+            body = client.post(
+                "/v1/graphs/default/relations/select",
+                json={"entity_ids": ["entity_1", "entity_2"]},
+            ).json()
+        assert [r["id"] for r in body["relations"]] == ["relation_1"]
+        assert body["page"]["total"] == 1
+
+    def test_induced_is_the_default_scope(self):
+        with build_client() as client:
+            induced = client.post(
+                "/v1/graphs/default/relations/select",
+                json={"entity_ids": ["entity_1"]},
+            ).json()
+            incident = client.post(
+                "/v1/graphs/default/relations/select",
+                json={"entity_ids": ["entity_1"], "edge_scope": "incident"},
+            ).json()
+        assert induced["relations"] == []
+        assert [r["id"] for r in incident["relations"]] == ["relation_1"]
+
+    def test_an_empty_set_is_refused(self):
+        with build_client() as client:
+            response = client.post(
+                "/v1/graphs/default/relations/select", json={"entity_ids": []}
+            )
+        assert response.status_code == 400
+        assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+    def test_more_ids_than_the_ceiling_is_refused(self):
+        with build_client() as client:
+            response = client.post(
+                "/v1/graphs/default/relations/select",
+                json={"entity_ids": [f"ent-{i}" for i in range(10_001)]},
+            )
+        assert response.status_code == 400
+
+    def test_ten_thousand_ids_fit_in_the_default_body_limit(self):
+        # Roughly 400 KB against a 32 MiB ceiling.
+        with build_client() as client:
+            response = client.post(
+                "/v1/graphs/default/relations/select",
+                json={"entity_ids": [f"ent-{i:032d}" for i in range(10_000)]},
+            )
+        assert response.status_code == 200
+
+    def test_an_unknown_field_is_refused(self):
+        with build_client() as client:
+            response = client.post(
+                "/v1/graphs/default/relations/select",
+                json={"entity_ids": ["entity_1"], "bogus": 1},
+            )
+        assert response.status_code == 400
+
+
+class TestPageCeiling:
+    """A consumer that exports a corpus should not pay a hundred round trips."""
+
+    def test_five_thousand_is_accepted_everywhere(self):
+        with build_client() as client:
+            for path in ("entities", "relations", "communities"):
+                response = client.get(
+                    f"/v1/graphs/default/{path}", params={"limit": 5000}
+                )
+                assert response.status_code == 200, path
+
+    def test_above_the_ceiling_is_refused(self):
+        with build_client() as client:
+            for path in ("entities", "relations", "communities"):
+                response = client.get(
+                    f"/v1/graphs/default/{path}", params={"limit": 5001}
+                )
+                assert response.status_code == 400, path
+
+    def test_the_default_page_is_still_fifty(self):
+        with build_client() as client:
+            for path in ("entities", "relations", "communities"):
+                body = client.get(f"/v1/graphs/default/{path}").json()
+                assert body["page"]["limit"] == 50, path
+
+    def test_ids_in_a_query_string_kept_their_own_ceiling(self):
+        # The page ceiling rose to 5000; this one did not follow it, because
+        # 501 ids of 36 characters is already a URL of roughly 20 KB.
+        with build_client() as client:
+            response = client.get(
+                "/v1/graphs/default/entities",
+                params={"ids": [f"ent-{i}" for i in range(501)], "limit": 5000},
+            )
+        assert response.status_code == 400
+        assert response.json()["error"]["code"] == "INVALID_REQUEST"

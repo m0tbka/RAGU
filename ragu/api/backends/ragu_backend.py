@@ -121,6 +121,34 @@ async def exclusive_settings() -> AsyncIterator[None]:
             yield
 
 
+def _select_relations(
+    edges: list[Any],
+    wanted: set[str],
+    edge_scope: str,
+    min_strength: float | None,
+) -> list[Any]:
+    """
+    Relations whose ends fall inside a set of entities.
+
+    :param edges: Every relation in the graph.
+    :param wanted: Entity ids the selection is restricted to.
+    :param edge_scope: ``induced`` for both ends inside, ``incident`` for either.
+    :param min_strength: Keep only relations at least this strong.
+    :return: The matching relations, in storage order.
+    """
+    both = edge_scope == "induced"
+    kept = []
+    for edge in edges:
+        inside = (edge.subject_id in wanted, edge.object_id in wanted)
+        if not (all(inside) if both else any(inside)):
+            continue
+        if min_strength is not None:
+            if float(getattr(edge, "relation_strength", 1.0)) < min_strength:
+                continue
+        kept.append(edge)
+    return kept
+
+
 def _count_degrees(edges: list[Any]) -> dict[str, int]:
     """
     How many relations touch each entity id.
@@ -620,6 +648,24 @@ class RaguBackend(SearchBackend):
                 e for e in edges if float(getattr(e, "relation_strength", 1.0)) >= min_strength
             ]
         return len(edges), edges[offset : offset + limit]
+
+    async def select_relations(
+        self,
+        *,
+        entity_ids: Sequence[str],
+        edge_scope: str = "induced",
+        min_strength: float | None = None,
+        limit: int,
+        offset: int,
+    ) -> tuple[int, list[Any]]:
+        self.require_idle()
+        edges = await self._edges()
+        # A membership test per relation over the whole corpus: pure CPU, so it
+        # runs off the event loop like the other whole-graph passes.
+        kept = await asyncio.to_thread(
+            _select_relations, edges, set(entity_ids), edge_scope, min_strength
+        )
+        return len(kept), kept[offset : offset + limit]
 
     async def neighbors(self, entity_id: str, depth: int, limit: int) -> dict[str, Any]:
         self.require_idle()

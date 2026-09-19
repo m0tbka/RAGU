@@ -70,9 +70,11 @@ from ragu.api.models import (
     NaiveRetrieveRequest,
     NaiveSearchRequest,
     OntologyResponse,
+    MAX_PAGE_LIMIT,
     PageInfo,
     RelationItem,
     RelationPage,
+    RelationSelectRequest,
     RetrieveResponse,
     SearchMode,
     SearchResponse,
@@ -879,16 +881,24 @@ def _chunk_item(chunk: Any) -> ChunkItem:
     )
 
 
+# A by-id selection travels in the query string, and an entity id is 36
+# characters: five hundred of them already make a URL of roughly 20 KB, past
+# what most servers accept on the request line. The page ceiling rose to 5000;
+# this one deliberately did not follow it.
+MAX_IDS_IN_QUERY = 500
+
+
 def _require_id_count(ids: list[str] | None, limit: int) -> None:
     """
-    Hold a by-id selection to the same ceiling as a page.
+    Hold a by-id selection to what a URL can actually carry.
 
-    :raises InvalidRequestError: If more ids were asked for than a page holds.
+    :raises InvalidRequestError: If more ids were asked for than fit.
     """
-    if ids is not None and len(ids) > limit:
+    ceiling = min(limit, MAX_IDS_IN_QUERY)
+    if ids is not None and len(ids) > ceiling:
         raise InvalidRequestError(
-            f"Asked for {len(ids)} ids, which is over the limit of {limit}. "
-            "Raise `limit` or split the request."
+            f"Asked for {len(ids)} ids, which is over the limit of {ceiling}. "
+            "Split the request, or POST the set to a selection route."
         )
 
 
@@ -988,7 +998,7 @@ async def graph_stats(request: Request, graph_id: str) -> GraphDetail:
 async def list_entities(
     graph_id: str,
     backend: SearchBackend = Depends(get_backend),
-    limit: int = Query(default=50, ge=1, le=500),
+    limit: int = Query(default=50, ge=1, le=MAX_PAGE_LIMIT),
     offset: int = Query(default=0, ge=0),
     type: str | None = Query(default=None, description="Exact entity type"),
     search: str | None = Query(default=None, description="Substring of the name"),
@@ -1049,7 +1059,7 @@ async def get_entity(
 async def list_chunks(
     graph_id: str,
     backend: SearchBackend = Depends(get_backend),
-    limit: int = Query(default=50, ge=1, le=500),
+    limit: int = Query(default=50, ge=1, le=MAX_PAGE_LIMIT),
     offset: int = Query(default=0, ge=0),
     ids: list[str] | None = Query(
         default=None, description="Fetch exactly these chunks, skipping the unknown"
@@ -1075,7 +1085,7 @@ async def list_chunks(
 async def list_relations(
     graph_id: str,
     backend: SearchBackend = Depends(get_backend),
-    limit: int = Query(default=50, ge=1, le=500),
+    limit: int = Query(default=50, ge=1, le=MAX_PAGE_LIMIT),
     offset: int = Query(default=0, ge=0),
     min_strength: float | None = Query(default=None),
 ) -> RelationPage:
@@ -1084,6 +1094,38 @@ async def list_relations(
     )
     return RelationPage(
         page=PageInfo(total=total, limit=limit, offset=offset),
+        relations=[_relation_item(relation) for relation in relations],
+    )
+
+
+@router.post(
+    "/v1/graphs/{graph_id}/relations/select",
+    response_model=RelationPage,
+    responses=GRAPH_RESPONSES,
+    tags=["graphs"],
+)
+async def select_relations(
+    graph_id: str,
+    payload: RelationSelectRequest,
+    backend: SearchBackend = Depends(get_backend),
+) -> RelationPage:
+    """
+    Relations restricted to a set of entities.
+
+    A canvas showing N entities needs the relations *between* them — the induced
+    subgraph. Anything else draws edges running off to nodes that are not on
+    screen. The set travels in the body because five hundred 36-character ids
+    make a URL no server will accept.
+    """
+    total, relations = await backend.select_relations(
+        entity_ids=payload.entity_ids,
+        edge_scope=payload.edge_scope,
+        min_strength=payload.min_strength,
+        limit=payload.limit,
+        offset=payload.offset,
+    )
+    return RelationPage(
+        page=PageInfo(total=total, limit=payload.limit, offset=payload.offset),
         relations=[_relation_item(relation) for relation in relations],
     )
 
@@ -1126,7 +1168,7 @@ async def entity_neighbors(
 async def list_communities(
     graph_id: str,
     backend: SearchBackend = Depends(get_backend),
-    limit: int = Query(default=50, ge=1, le=500),
+    limit: int = Query(default=50, ge=1, le=MAX_PAGE_LIMIT),
     offset: int = Query(default=0, ge=0),
     level: int | None = Query(default=None, description="Leiden level"),
     ids: list[str] | None = Query(

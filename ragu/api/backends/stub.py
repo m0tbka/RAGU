@@ -387,6 +387,21 @@ class StubBackend(SearchBackend):
             items = [r for r in items if r["strength"] >= min_strength]
         return len(items), items[offset : offset + limit]
 
+    async def select_relations(
+        self, *, entity_ids, edge_scope="induced", min_strength=None, limit, offset
+    ) -> tuple[int, list[Any]]:
+        wanted = set(entity_ids)
+        both = edge_scope == "induced"
+        kept = []
+        for relation in self._RELATIONS:
+            inside = (relation["subject_id"] in wanted, relation["object_id"] in wanted)
+            if not (all(inside) if both else any(inside)):
+                continue
+            if min_strength is not None and relation["strength"] < min_strength:
+                continue
+            kept.append(relation)
+        return len(kept), kept[offset : offset + limit]
+
     async def neighbors(self, entity_id: str, depth: int, limit: int) -> dict[str, Any]:
         if entity_id not in {e["id"] for e in self._ENTITIES}:
             raise NotFoundError(f"No entity with id '{entity_id}' in this graph.")
