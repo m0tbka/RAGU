@@ -17,19 +17,9 @@ from ragu.search_engine.base_engine import (
     SearchEngineStreamEvent,
     EngineParams,
 )
+from ragu.search_engine.params import MixQueryParams  # re-exported
 from ragu.common.prompts.prompt_storage import RAGUInstruction
 from ragu.common.prompts.messages import ChatMessages, render
-
-
-@dataclass
-class MixQueryParams(EngineParams):
-    """
-    Query parameters for :class:`MixSearchEngine`.
-
-    :param ensemble_responses: When ``True``, ensemble child-engine *answers*
-        (via their ``batch_query``) instead of child-engine retrieval contexts.
-    """
-    ensemble_responses: bool = False
 
 
 @dataclass(slots=True)

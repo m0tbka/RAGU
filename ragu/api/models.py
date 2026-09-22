@@ -6,10 +6,14 @@ from datetime import datetime
 from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field
-from ragu.search_engine.global_search import GlobalSearchParams
-from ragu.search_engine.local_search import LocalParams
-from ragu.search_engine.mix_search import MixQueryParams
-from ragu.search_engine.naive_search import NaiveSearchParams
+# From the parameter module, not the engine modules: the schemas are what a
+# client imports, and the engines drag the whole library in behind them.
+from ragu.search_engine.params import (
+    GlobalSearchParams,
+    LocalParams,
+    MixQueryParams,
+    NaiveSearchParams,
+)
 
 SearchMode = Literal["global", "local", "naive", "mix"]
 
@@ -184,6 +188,12 @@ class StageUsageModel(BaseModel):
     )
     generation_ms: float | None = Field(
         default=None, description="Wall time spent in the LLM, in milliseconds"
+    )
+    rerank_ms: float | None = Field(
+        default=None,
+        description="Wall time spent in the reranker, in milliseconds. Set on the "
+        "'rerank' stage, whose calls are not LLM calls and so are left out of the "
+        "request's call total",
     )
 
 
@@ -680,6 +690,18 @@ class GraphDetail(BaseModel):
     embedding_dim: int | None = None
     accepts_documents: bool = False
     modes: list["ModeAvailability"] = Field(default_factory=list)
+    updated_at: datetime | None = Field(
+        default=None,
+        description="When the graph's data was last written: the latest "
+        "modification time among the files in its storage folder. For a graph "
+        "built offline and mounted as is, this is its build time",
+    )
+    created_at: datetime | None = Field(
+        default=None,
+        description="When the storage folder was created, where the filesystem "
+        "records that. Linux does not expose it, so on a typical container "
+        "deployment this is null — null, and not a placeholder date",
+    )
 
 
 class ConsistencyIssueItem(BaseModel):

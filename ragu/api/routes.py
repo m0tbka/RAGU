@@ -196,6 +196,7 @@ def _usage_model() -> UsageModel | None:
                     else None
                 ),
                 generation_ms=round(stage.generation_ms, 1) or None,
+                rerank_ms=round(stage.rerank_ms, 1) or None,
             )
             for name, stage in record.stages.items()
         },

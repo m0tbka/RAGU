@@ -919,6 +919,19 @@
             "title": "Community Summaries",
             "type": "integer"
           },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the storage folder was created, where the filesystem records that. Linux does not expose it, so on a typical container deployment this is null — null, and not a placeholder date",
+            "title": "Created At"
+          },
           "documents": {
             "default": 0,
             "title": "Documents",
@@ -963,6 +976,19 @@
             "default": 0,
             "title": "Relations",
             "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the graph's data was last written: the latest modification time among the files in its storage folder. For a graph built offline and mounted as is, this is its build time",
+            "title": "Updated At"
           }
         },
         "required": [
@@ -2267,6 +2293,18 @@
             "default": 0,
             "title": "Prompt Tokens",
             "type": "integer"
+          },
+          "rerank_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Wall time spent in the reranker, in milliseconds. Set on the 'rerank' stage, whose calls are not LLM calls and so are left out of the request's call total",
+            "title": "Rerank Ms"
           },
           "retrieval_ms": {
             "anyOf": [

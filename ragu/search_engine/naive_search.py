@@ -21,22 +21,9 @@ from ragu.search_engine.base_engine import (
     SearchEngineRetrieve,
     SearchEngineResponse,
     SearchEngineStreamEvent,
-    EngineParams,
 )
+from ragu.search_engine.params import NaiveSearchParams  # re-exported
 from typing_extensions import override
-
-
-@dataclass
-class NaiveSearchParams(EngineParams):
-    """
-    Retrieval/query parameters for :class:`NaiveSearchEngine`.
-
-    :param top_k: Number of chunks to retrieve.
-    :param rerank_top_k: Number of chunks to keep after reranking. ``None`` keeps
-        all reranked chunks. Used only when a reranker is configured.
-    """
-    top_k: int = 20
-    rerank_top_k: Optional[int] = None
 
 
 @dataclass(slots=True)

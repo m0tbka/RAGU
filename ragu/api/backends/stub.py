@@ -7,6 +7,7 @@ be exercised end-to-end without building a knowledge graph.
 
 from collections.abc import AsyncIterator
 from dataclasses import replace
+from datetime import datetime, timezone
 from typing import Any
 
 from ragu.api.backends.base import (
@@ -47,6 +48,10 @@ _FULL_STATS = GraphStats(
     entities=1, relations=1, chunks=1, community_summaries=1
 )
 
+
+# A fixed, plainly fake moment, so a client can render the field without a
+# real graph behind it.
+_STUB_BUILT_AT = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 _CHILD_ENGINE = {
     "local": "LocalSearchEngine",
@@ -322,6 +327,8 @@ class StubBackend(SearchBackend):
             "community_summaries": stats.community_summaries,
             "documents": 1,
             "embedding_dim": 8,
+            "created_at": _STUB_BUILT_AT,
+            "updated_at": _STUB_BUILT_AT,
         }
 
     async def list_entities(

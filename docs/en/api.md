@@ -179,7 +179,7 @@ back to it.
 
 | Route | |
 |---|---|
-| `GET /v1/graphs/{id}/stats` | sizes, `embedding_dim`, documents, mode availability |
+| `GET /v1/graphs/{id}/stats` | sizes, `embedding_dim`, documents, mode availability, `updated_at` / `created_at` |
 | `GET /v1/graphs/{id}/entities` | `limit`, `offset`, `type`, `search` (name substring), `community_id`, `sort` (`degree`/`name`), `order`, `ids` |
 | `GET /v1/graphs/{id}/entities/{eid}` | one entity |
 | `GET /v1/graphs/{id}/relations` | `limit`, `offset`, `min_strength` |
@@ -358,6 +358,15 @@ and position; a community report's title. The shape is selected by `kind`.
 Sources from `global` carry the title alone: `GlobalSearchResult` holds the
 insight the model wrote *about* a community, not which community it was.
 
+**`score` is the relevance a source actually has.** Naive chunks carry vector
+similarity, global insights the model's rating. In `local`, an entity carries
+the vector score that retrieved it; local relations, summaries and chunks were
+reached by walking the graph rather than by similarity to the question, so the
+reranker's score is the only one they have. When a reranker ran, its score wins
+for entities too. Where there is no score the field is `null`, not `0.0` — a
+zero would read as "irrelevant". A reranker that failed also yields `null`,
+never a made-up number.
+
 When a query plan ran, `sources` carries the evidence of **every** subquery,
 deduplicated, not only that of the final one — the intermediate answers are
 returned in `subqueries`, so their evidence is returned with them.
@@ -384,9 +393,17 @@ as free text.
 `rerank` (default `true`) asks for the deployment's reranker; `rerank_top_k`
 inside `params` says how many results to keep after it.
 
-The service never constructs a reranker — on a CPU-only deployment the model
-runs in its own container — so one is passed to `create_app(reranker=...)`. With
-none configured, `rerank` is a no-op.
+The service does not run the reranker model — on a CPU-only deployment it runs
+in its own container — so `create_app(reranker=...)` takes a client to it.
+`python -m ragu.api` builds that client from the environment:
+
+| Variable | |
+|---|---|
+| `RERANKER_BASE_URL` | Where the reranker is. Unset means no reranker |
+| `RERANKER_MODEL_NAME` | Required alongside the URL; without it the reranker is left out and the log says so |
+| `RERANKER_API_KEY` | Falls back to `LLM_API_KEY` |
+
+With none configured, `rerank` is a no-op.
 
 A reranker that fails or exceeds `RAGU_API_RERANK_TIMEOUT` costs ranking
 quality, not the answer: the retrieval order is kept and `engines.rerank_error`
@@ -511,6 +528,14 @@ Every response carries `usage`: LLM calls and token counts, broken down by the
 stage that spent them — the engines already label their calls (`QueryPlan
 decompose`, `GlobalSearch batch meta-eval`, `NaiveSearch batch query`), and
 those labels are the breakdown.
+
+Stages carry three times: `generation_ms` inside the LLM, `rerank_ms` inside the
+reranker (on a `rerank` stage of its own), and `retrieval_ms` for the rest. They
+are **wall** time: the engines call the models in parallel through
+`asyncio.gather`, and four simultaneous one-second calls are one second of the
+request, not four. The reranker's calls show on its stage but stay out of the
+top-level `calls`, which counts LLM calls and is what the budget is measured
+against.
 
 ```json
 {"estimated": true, "calls": 7, "prompt_tokens": 4210, "completion_tokens": 380,

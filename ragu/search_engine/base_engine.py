@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypeVar, Generic
+from ragu.search_engine.params import EngineParams  # re-exported
 
 from pydantic import BaseModel
 
@@ -13,18 +14,6 @@ from ragu.utils.ragu_utils import deprecated
 from ragu.utils.token_truncation import TokenTruncation
 
 ResultT = TypeVar("ResultT")
-
-
-@dataclass
-class EngineParams:
-    """
-    Base class for engine parameters.
-
-    Carries no fields of its own; concrete engines subclass it to declare only
-    the options they actually use (e.g. ``top_k``, reranking limits, generation
-    flags). Shared by ``search`` / ``batch_search`` and ``query`` /
-    ``batch_query``.
-    """
 
 
 @dataclass(slots=True)

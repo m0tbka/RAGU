@@ -233,25 +233,28 @@ async def _find_most_related_community_from_entities(
         if summary_text is not None
     ]
 
-async def _rerank_items(
+async def _rerank_items_scored(
     query: str,
     items: list[T],
     text_getter: Callable[[T], str],
     reranker: Scorer | None,
-) -> list[T]:
+) -> list[tuple[T, float | None]]:
     """
-    Rerank items with an optional scorer while preserving original items.
+    Rerank items with an optional scorer, keeping the score of each.
 
-    If ``reranker`` is not provided, items are returned unchanged.
+    :return: ``(item, score)`` in reranked order. Without a reranker the order is
+        unchanged and every score is ``None``: there is no relevance score to
+        report, and a zero would read as one.
     """
     if reranker is None or not items:
-        return items
+        return [(item, None) for item in items]
 
     rerank_results = await reranker.score(
         query,
         [text_getter(item) for item in items],
     )
-    return [items[idx] for idx, _ in rerank_results if 0 <= idx < len(items)]
+    return [(items[idx], score) for idx, score in rerank_results if 0 <= idx < len(items)]
+
 
 def _topological_sort(subqueries: List[SubQuery]) -> List[SubQuery]:
     """

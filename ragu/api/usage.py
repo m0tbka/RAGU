@@ -25,6 +25,45 @@ from ragu.models.llm import LLM
 # The stage names the engines already pass as ``desc``.
 UNKNOWN_STAGE = "unknown"
 
+# The stage the reranker's calls are recorded under. Its calls stay out of the
+# request's call total, because that total is what the budget counts, and the
+# budget is for LLM calls — a reranker is not one.
+RERANK_STAGE = "rerank"
+
+
+class _WallClock:
+    """
+    Wall time covered by intervals that may overlap.
+
+    The engines fan out through ``asyncio.gather``, so several calls to the same
+    model run at once. Adding up each one's duration counts the same second
+    several times: two parallel one-second calls would report two seconds of a
+    request that took one. This clock runs while at least one interval is open,
+    which is the time the request actually spent waiting.
+
+    Not thread-safe and does not need to be: every interval opens and closes on
+    the event loop.
+    """
+
+    __slots__ = ("total_ms", "_open", "_since")
+
+    def __init__(self) -> None:
+        self.total_ms = 0.0
+        self._open = 0
+        self._since = 0.0
+
+    @contextmanager
+    def running(self):
+        if self._open == 0:
+            self._since = time.perf_counter()
+        self._open += 1
+        try:
+            yield
+        finally:
+            self._open -= 1
+            if self._open == 0:
+                self.total_ms += (time.perf_counter() - self._since) * 1000.0
+
 
 @dataclass
 class StageUsage:
@@ -35,11 +74,20 @@ class StageUsage:
     calls: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
-    # Generation is timed exactly, around the call itself. Retrieval is what is
-    # left of the stage once the LLM is accounted for: the engines interleave
-    # storage reads with generation, so it cannot be timed from outside them.
-    generation_ms: float = 0.0
+    # Generation and reranking are timed around the calls themselves. Retrieval
+    # is what is left of the stage once both are accounted for: the engines
+    # interleave storage reads with the calls, so it cannot be timed directly.
     retrieval_ms: float | None = None
+    generation: _WallClock = field(default_factory=_WallClock, repr=False)
+    rerank: _WallClock = field(default_factory=_WallClock, repr=False)
+
+    @property
+    def generation_ms(self) -> float:
+        return self.generation.total_ms
+
+    @property
+    def rerank_ms(self) -> float:
+        return self.rerank.total_ms
 
 
 @dataclass
@@ -50,9 +98,17 @@ class Usage:
 
     stages: dict[str, StageUsage] = field(default_factory=dict)
 
+    def stage(self, name: str) -> StageUsage:
+        return self.stages.setdefault(name, StageUsage())
+
     @property
     def calls(self) -> int:
-        return sum(stage.calls for stage in self.stages.values())
+        """
+        LLM calls. The reranker's are on their own stage and not counted here.
+        """
+        return sum(
+            stage.calls for name, stage in self.stages.items() if name != RERANK_STAGE
+        )
 
     @property
     def prompt_tokens(self) -> int:
@@ -70,25 +126,23 @@ class Usage:
     def generation_ms(self) -> float:
         return sum(stage.generation_ms for stage in self.stages.values())
 
+    @property
+    def rerank_ms(self) -> float:
+        return sum(stage.rerank_ms for stage in self.stages.values())
+
     def record(
-        self,
-        stage: str,
-        calls: int,
-        prompt_tokens: int,
-        completion_tokens: int,
-        generation_ms: float = 0.0,
+        self, stage: str, calls: int, prompt_tokens: int, completion_tokens: int
     ) -> None:
-        entry = self.stages.setdefault(stage, StageUsage())
+        entry = self.stage(stage)
         entry.calls += calls
         entry.prompt_tokens += prompt_tokens
         entry.completion_tokens += completion_tokens
-        entry.generation_ms += generation_ms
 
     def record_retrieval(self, stage: str, retrieval_ms: float) -> None:
         """
-        Attribute time spent outside the LLM to a stage.
+        Attribute time spent outside the LLM and the reranker to a stage.
         """
-        entry = self.stages.setdefault(stage, StageUsage())
+        entry = self.stage(stage)
         entry.retrieval_ms = (entry.retrieval_ms or 0.0) + max(retrieval_ms, 0.0)
 
 
@@ -119,13 +173,7 @@ def current() -> Usage | None:
     return _usage.get()
 
 
-def _charge(
-    stage: str,
-    calls: int,
-    prompt_tokens: int,
-    completion_tokens: int,
-    generation_ms: float = 0.0,
-) -> None:
+def _charge(stage: str, calls: int, prompt_tokens: int, completion_tokens: int) -> None:
     """
     Add to the current request's usage and enforce its budget.
 
@@ -134,7 +182,7 @@ def _charge(
     usage = _usage.get()
     if usage is None:
         return
-    usage.record(stage, calls, prompt_tokens, completion_tokens, generation_ms)
+    usage.record(stage, calls, prompt_tokens, completion_tokens)
 
     max_calls, max_tokens = _budget.get()
     if max_calls is not None and usage.calls > max_calls:
@@ -151,25 +199,57 @@ def _charge(
 
 
 @contextmanager
+def _generating(stage: str):
+    """
+    Run the stage's generation clock for the duration of the block.
+    """
+    usage = _usage.get()
+    if usage is None:
+        yield
+        return
+    with usage.stage(stage).generation.running():
+        yield
+
+
+@contextmanager
+def measure_rerank():
+    """
+    Count one reranker call and time it, on its own stage.
+
+    Without this the reranker's time disappears into retrieval, and a dashboard
+    can only see it as the difference between two other numbers.
+    """
+    usage = _usage.get()
+    if usage is None:
+        yield
+        return
+    entry = usage.stage(RERANK_STAGE)
+    entry.calls += 1
+    with entry.rerank.running():
+        yield
+
+
+@contextmanager
 def measure_retrieval(stage: str):
     """
-    Time a block and record whatever of it was not spent in the LLM.
+    Time a block and record whatever of it was not spent in the LLM or reranker.
 
-    The engines read storage and generate inside one call, so retrieval cannot
-    be timed by wrapping a narrower thing; what is left after subtracting the
-    generation this block paid for is the honest answer.
+    The engines read storage, rerank and generate inside one call, so retrieval
+    cannot be timed by wrapping a narrower thing; what is left after subtracting
+    the generation and reranking this block paid for is the honest answer.
 
     :param stage: Stage name to record the time under.
     """
     usage = _usage.get()
-    before = usage.generation_ms if usage is not None else 0.0
+    spent_before = usage.generation_ms + usage.rerank_ms if usage is not None else 0.0
     started = time.perf_counter()
     try:
         yield
     finally:
         if usage is not None:
             elapsed = (time.perf_counter() - started) * 1000.0
-            usage.record_retrieval(stage, elapsed - (usage.generation_ms - before))
+            spent = usage.generation_ms + usage.rerank_ms - spent_before
+            usage.record_retrieval(stage, elapsed - spent)
 
 
 class CountingLLM(LLM):
@@ -224,14 +304,13 @@ class CountingLLM(LLM):
     @override
     async def chat_completion(self, conversation: Any, *args: Any, **kwargs: Any) -> Any:
         stage = kwargs.get("desc") or UNKNOWN_STAGE
-        started = time.perf_counter()
-        answer = await self.llm.chat_completion(conversation, *args, **kwargs)
+        with _generating(stage):
+            answer = await self.llm.chat_completion(conversation, *args, **kwargs)
         _charge(
             stage,
             1,
             self._conversation_tokens(conversation),
             self._answer_tokens(answer),
-            (time.perf_counter() - started) * 1000.0,
         )
         return answer
 
@@ -239,14 +318,13 @@ class CountingLLM(LLM):
         self, conversations: list[Any], *args: Any, **kwargs: Any
     ) -> Any:
         stage = kwargs.get("desc") or UNKNOWN_STAGE
-        started = time.perf_counter()
-        answers = await self.llm.batch_chat_completion(conversations, *args, **kwargs)
-        elapsed = (time.perf_counter() - started) * 1000.0
+        with _generating(stage):
+            answers = await self.llm.batch_chat_completion(conversations, *args, **kwargs)
         prompt = sum(
             self._conversation_tokens(conversation) for conversation in conversations
         )
         completion = sum(self._answer_tokens(answer) for answer in answers or [])
-        _charge(stage, len(conversations), prompt, completion, elapsed)
+        _charge(stage, len(conversations), prompt, completion)
         return answers
 
     async def stream_chat_completion(
@@ -255,16 +333,12 @@ class CountingLLM(LLM):
         stage = kwargs.get("desc") or UNKNOWN_STAGE
         # Counted as one call; the deltas are summed as they pass.
         completion = 0
-        started = time.perf_counter()
-        async for delta in self.llm.stream_chat_completion(
-            conversation, *args, **kwargs
-        ):
-            completion += self._count(delta if isinstance(delta, str) else "")
-            yield delta
-        _charge(
-            stage,
-            1,
-            self._conversation_tokens(conversation),
-            completion,
-            (time.perf_counter() - started) * 1000.0,
-        )
+        # The clock stops even if the client leaves mid-stream: closing the
+        # generator exits the block.
+        with _generating(stage):
+            async for delta in self.llm.stream_chat_completion(
+                conversation, *args, **kwargs
+            ):
+                completion += self._count(delta if isinstance(delta, str) else "")
+                yield delta
+        _charge(stage, 1, self._conversation_tokens(conversation), completion)

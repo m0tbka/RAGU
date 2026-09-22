@@ -6,6 +6,7 @@ import asyncio
 import os
 from collections.abc import AsyncIterator, Iterator, Sequence
 from contextlib import asynccontextmanager, contextmanager
+from datetime import datetime, timezone
 from typing import Any, get_type_hints
 
 from ragu import (
@@ -204,6 +205,35 @@ def _select_entities(
         counts = degrees or {}
         nodes = sorted(nodes, key=lambda n: counts.get(n.id, 0), reverse=order == "desc")
     return nodes
+
+
+def _folder_timestamps(folder: str) -> tuple[datetime | None, datetime | None]:
+    """
+    When a graph's storage folder was created and last written.
+
+    The graph records no build date of its own, so the filesystem is the only
+    witness. Modification times exist everywhere; creation time does not —
+    ``os.stat`` reports it on Windows and macOS but not on Linux, which is where
+    the service usually runs. A missing value is returned as ``None`` rather
+    than guessed: the oldest modification time is not a creation time, since an
+    in-place rebuild rewrites every file.
+
+    :param folder: The graph's storage folder.
+    :return: ``(created_at, updated_at)`` in UTC; either may be ``None``.
+    """
+    try:
+        files = [entry for entry in os.scandir(folder) if entry.is_file()]
+        born = getattr(os.stat(folder), "st_birthtime", None)
+    except OSError:
+        return None, None
+
+    def moment(timestamp: float | None) -> datetime | None:
+        if timestamp is None:
+            return None
+        return datetime.fromtimestamp(timestamp, tz=timezone.utc)
+
+    updated = max((entry.stat().st_mtime for entry in files), default=None)
+    return moment(born), moment(updated)
 
 
 def _cluster_ids(entity: Any) -> set[str]:
@@ -543,6 +573,7 @@ class RaguBackend(SearchBackend):
             if chunk is not None
         }
         stats = self._stats or GraphStats()
+        created_at, updated_at = _folder_timestamps(self.spec.storage_folder)
         return {
             "entities": stats.entities,
             "relations": stats.relations,
@@ -551,6 +582,8 @@ class RaguBackend(SearchBackend):
             "community_summaries": stats.community_summaries,
             "documents": len({doc for doc in documents if doc}),
             "embedding_dim": getattr(embedder, "dim", None),
+            "created_at": created_at,
+            "updated_at": updated_at,
         }
 
     async def list_entities(

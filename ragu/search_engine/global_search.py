@@ -18,23 +18,10 @@ from ragu.search_engine.base_engine import (
     SearchEngineRetrieve,
     SearchEngineResponse,
     SearchEngineStreamEvent,
-    EngineParams,
 )
+from ragu.search_engine.params import GlobalSearchParams  # re-exported
 
 
-@dataclass
-class GlobalSearchParams(EngineParams):
-    """
-    Per-query parameters for :class:`GlobalSearchEngine`.
-
-    :param min_cluster_size: Minimum number of entities a community must
-        contain for its summary to be evaluated. When ``1`` (the default),
-        every stored community takes part in retrieval.
-    """
-    min_cluster_size: int = 1
-
-
-# TODO: add the ability to use custom schemas instead of GlobalSearchContextModel
 @dataclass(slots=True)
 class GlobalSearchResult:
     """

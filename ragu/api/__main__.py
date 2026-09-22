@@ -8,6 +8,7 @@ import uvicorn
 from ragu.api.app import create_app, openapi_document
 from ragu.api.config import ServiceSettings
 from ragu.api.logging_setup import configure_logging
+from ragu.api.reranking import reranker_from_env
 
 
 def main() -> None:
@@ -57,9 +58,11 @@ def main() -> None:
         if value is not None
     }
     settings = ServiceSettings(**overrides)
+    # The stub never reranks, so it does not need to know about a reranker.
+    reranker = reranker_from_env() if settings.backend == "ragu" else None
 
     uvicorn.run(
-        create_app(settings),
+        create_app(settings, reranker=reranker),
         host=settings.host,
         port=settings.port,
         log_level=args.log_level,

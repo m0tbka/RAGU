@@ -29,36 +29,16 @@ from ragu.search_engine.base_engine import (
     SearchEngineRetrieve,
     SearchEngineResponse,
     SearchEngineStreamEvent,
-    EngineParams,
 )
+from ragu.search_engine.params import LocalParams  # re-exported
 from ragu.search_engine.search_functional import (
     _find_most_related_edges_from_entities,
     _find_most_related_text_unit_from_entities,
     _find_documents_id,
     _find_most_related_community_from_entities,
-    _rerank_items,
+    _rerank_items_scored,
     _prefetch_entity_edges,
 )
-
-
-@dataclass
-class LocalParams(EngineParams):
-    """
-    Parameters for :class:`LocalSearchEngine`.
-
-    :param top_k: Maximum number of entities to retrieve. (Retrieval-time.)
-    :param rerank_top_k: After reranking the retrieved entities, keep only this
-        many most-relevant entities before deriving relations, summaries and
-        chunks. ``None`` keeps all entities. (Retrieval-time.)
-    :param use_summary: Whether community summaries are included in the generated
-        context. (Generation-time; ignored by :meth:`batch_search`.)
-    :param use_chunks: Whether source chunks are included in the generated
-        context. (Generation-time; ignored by :meth:`batch_search`.)
-    """
-    top_k: int = 20
-    rerank_top_k: int | None = None
-    use_summary: bool = False
-    use_chunks: bool = True
 
 
 @dataclass(slots=True)
@@ -121,6 +101,17 @@ class LocalSearchRetrieve(SearchEngineRetrieve[LocalSearchResult]):
         Render entities, relations, optional summaries, and optional chunks.
         """
         return self._TO_TEXT_TEMPLATE.render(result=self.result)
+
+
+def _scores_by_id(scored: List[tuple[Any, float | None]]) -> Dict[str, float]:
+    """
+    The reranker's scores keyed by item id, leaving out items it did not score.
+    """
+    return {
+        item.id: score
+        for item, score in scored
+        if score is not None and getattr(item, "id", None)
+    }
 
 
 class LocalSearchEngine(BaseEngine[LocalParams, LocalSearchRetrieve]):
@@ -208,20 +199,23 @@ class LocalSearchEngine(BaseEngine[LocalParams, LocalSearchRetrieve]):
         params = params or LocalParams()
         entity_results = await self.retriever.query_entities(queries, top_k=params.top_k)
 
-        ranked_entities = await asyncio.gather(*[
+        ranked = await asyncio.gather(*[
             self._rank_entities(query, entities, params.rerank_top_k)
             for query, (entities, _) in zip(queries, entity_results)
         ])
 
         edges_by_entity, neighbor_chunks = await _prefetch_entity_edges(
-            [entity.id for entities in ranked_entities for entity in entities if entity and entity.id],
+            [entity.id for entities, _ in ranked for entity in entities if entity and entity.id],
             self.knowledge_graph,
         )
 
         return list(await asyncio.gather(*[
-            self._assemble(query, entities, entity_hits, ranked, edges_by_entity, neighbor_chunks)
-            for query, (entities, entity_hits), ranked
-            in zip(queries, entity_results, ranked_entities)
+            self._assemble(
+                query, entities, entity_hits, ranked_entities, entity_rerank_scores,
+                edges_by_entity, neighbor_chunks,
+            )
+            for query, (entities, entity_hits), (ranked_entities, entity_rerank_scores)
+            in zip(queries, entity_results, ranked)
         ]))
 
     async def _rank_entities(
@@ -229,7 +223,7 @@ class LocalSearchEngine(BaseEngine[LocalParams, LocalSearchRetrieve]):
         query: str,
         entities: List[Entity],
         rerank_top_k: int | None = None,
-    ) -> List[Entity]:
+    ) -> tuple[List[Entity], Dict[str, float]]:
         """
         Select the entities most relevant to the query from those retrieved.
 
@@ -239,17 +233,18 @@ class LocalSearchEngine(BaseEngine[LocalParams, LocalSearchRetrieve]):
         :param query: Input query string.
         :param entities: Candidate entities retrieved for the query.
         :param rerank_top_k: Keep at most this many; ``None`` keeps all.
-        :return: The relevant entities, most relevant first.
+        :return: The relevant entities, most relevant first, and the reranker's
+            score for each by id — empty when no reranker ran.
         """
-        entities = await _rerank_items(
+        scored = await _rerank_items_scored(
             query,
             entities,
             lambda entity: f"{entity.entity_name}\n{entity.entity_type}\n{entity.description}",
             self.reranker,
         )
         if self.reranker is not None and rerank_top_k is not None:
-            entities = entities[:rerank_top_k]
-        return entities
+            scored = scored[:rerank_top_k]
+        return [entity for entity, _ in scored], _scores_by_id(scored)
 
     async def _assemble(
         self,
@@ -257,6 +252,7 @@ class LocalSearchEngine(BaseEngine[LocalParams, LocalSearchRetrieve]):
         entities: List[Entity],
         entity_hits: List[EmbeddingHit],
         ranked_entities: List[Entity],
+        entity_rerank_scores: Dict[str, float],
         edges_by_entity: Dict[str, List[Relation]],
         neighbor_chunks: Dict[str, List[str]],
     ) -> LocalSearchRetrieve:
@@ -272,6 +268,8 @@ class LocalSearchEngine(BaseEngine[LocalParams, LocalSearchRetrieve]):
         :param entities: Retrieved entities carrying the reported relevance scores.
         :param entity_hits: Relevance scores aligned with ``entities``.
         :param ranked_entities: The anchor entities selected for this query.
+        :param entity_rerank_scores: The reranker's score for each anchor entity
+            by id; empty when no reranker ran.
         :param edges_by_entity: Incident edges available for these entities.
         :param neighbor_chunks: Neighbor source chunks available for these entities.
         :return: A :class:`LocalSearchRetrieve` with the query's local context and metrics.
@@ -297,9 +295,11 @@ class LocalSearchEngine(BaseEngine[LocalParams, LocalSearchRetrieve]):
         relevant_chunks = [chunk for chunk in relevant_chunks if chunk is not None]
         summaries = [summary for summary in summaries if summary is not None]
 
-        # 4. Rerank the derived items.
-        relations, summaries, relevant_chunks = await asyncio.gather(
-            _rerank_items(
+        # 4. Rerank the derived items, keeping the reranker's scores: they are
+        # the only relevance score these items have, since they were selected
+        # through the graph rather than by similarity to the query.
+        scored_relations, scored_summaries, scored_chunks = await asyncio.gather(
+            _rerank_items_scored(
                 query,
                 relations,
                 lambda relation: (
@@ -308,19 +308,22 @@ class LocalSearchEngine(BaseEngine[LocalParams, LocalSearchRetrieve]):
                 ),
                 self.reranker,
             ),
-            _rerank_items(
+            _rerank_items_scored(
                 query,
                 summaries,
                 lambda community_summary: community_summary.summary,
                 self.reranker,
             ),
-            _rerank_items(
+            _rerank_items_scored(
                 query,
                 relevant_chunks,
                 lambda chunk: chunk.content,
                 self.reranker,
             ),
         )
+        relations = [relation for relation, _ in scored_relations]
+        summaries = [summary for summary, _ in scored_summaries]
+        relevant_chunks = [chunk for chunk, _ in scored_chunks]
 
         return LocalSearchRetrieve(
             query=query,
@@ -341,6 +344,14 @@ class LocalSearchEngine(BaseEngine[LocalParams, LocalSearchRetrieve]):
                     }
                     for idx, entity in enumerate(entities)
                 ],
+                # By id, and only where a reranker actually scored the item.
+                # Kept apart from "entities" so that entry keeps its shape.
+                "rerank_scores": {
+                    "entities": entity_rerank_scores,
+                    "relations": _scores_by_id(scored_relations),
+                    "summaries": _scores_by_id(scored_summaries),
+                    "chunks": _scores_by_id(scored_chunks),
+                },
             },
         )
 

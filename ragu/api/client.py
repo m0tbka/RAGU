@@ -16,9 +16,11 @@ from typing import Any
 from ragu.api.models import (
     BatchSearchResponse,
     ChunkItem,
+    ChunkPage,
     CommunityDetail,
     CommunityPage,
     ConsistencyReportModel,
+    EntityItem,
     EntityPage,
     GraphDetail,
     GraphInfo,
@@ -251,7 +253,21 @@ class RaguClient:
         offset: int = 0,
         type: str | None = None,
         search: str | None = None,
+        community_id: str | None = None,
+        sort: str | None = None,
+        order: str | None = None,
+        ids: list[str] | None = None,
     ) -> EntityPage:
+        """
+        A page of entities, filtered, sorted, or fetched by id.
+
+        :param sort: ``degree`` or ``name``; storage order when omitted.
+        :param order: ``asc`` or ``desc``.
+        :param ids: Exactly these entities. Every other filter and the paging
+            are ignored, and an unknown id is skipped. Travels in the query
+            string, so it is capped at 500 — for a larger set of entities use
+            :meth:`select_relations`, whose set travels in the body.
+        """
         name = graph or self.graph
         payload = await self._get(
             f"/v1/graphs/{name}/entities",
@@ -259,8 +275,23 @@ class RaguClient:
             offset=offset,
             type=type,
             search=search,
+            community_id=community_id,
+            sort=sort,
+            order=order,
+            ids=ids,
         )
         return EntityPage.model_validate(payload)
+
+    async def entity(self, entity_id: str, *, graph: str | None = None) -> EntityItem:
+        """
+        One entity.
+
+        :raises RaguApiError: ``NOT_FOUND`` if the graph holds no such entity.
+        """
+        name = graph or self.graph
+        return EntityItem.model_validate(
+            await self._get(f"/v1/graphs/{name}/entities/{entity_id}")
+        )
 
     async def relations(
         self,
@@ -277,6 +308,37 @@ class RaguClient:
             offset=offset,
             min_strength=min_strength,
         )
+        return RelationPage.model_validate(payload)
+
+    async def select_relations(
+        self,
+        entity_ids: list[str],
+        *,
+        graph: str | None = None,
+        edge_scope: str = "induced",
+        min_strength: float | None = None,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> RelationPage:
+        """
+        Relations restricted to a set of entities.
+
+        :param entity_ids: The set. Travels in the body, so it may be large —
+            up to 10 000 ids.
+        :param edge_scope: ``induced`` keeps a relation when both ends are in
+            the set, which is what a graph canvas draws; ``incident`` keeps it
+            when either end is.
+        """
+        name = graph or self.graph
+        body: dict[str, Any] = {
+            "entity_ids": entity_ids,
+            "edge_scope": edge_scope,
+            "limit": limit,
+            "offset": offset,
+        }
+        if min_strength is not None:
+            body["min_strength"] = min_strength
+        payload = await self._post(f"/v1/graphs/{name}/relations/select", body)
         return RelationPage.model_validate(payload)
 
     async def neighbors(
@@ -302,10 +364,15 @@ class RaguClient:
         limit: int = 50,
         offset: int = 0,
         level: int | None = None,
+        ids: list[str] | None = None,
     ) -> CommunityPage:
         name = graph or self.graph
         payload = await self._get(
-            f"/v1/graphs/{name}/communities", limit=limit, offset=offset, level=level
+            f"/v1/graphs/{name}/communities",
+            limit=limit,
+            offset=offset,
+            level=level,
+            ids=ids,
         )
         return CommunityPage.model_validate(payload)
 
@@ -315,6 +382,25 @@ class RaguClient:
         name = graph or self.graph
         payload = await self._get(f"/v1/graphs/{name}/communities/{community_id}")
         return CommunityDetail.model_validate(payload)
+
+    async def chunks(
+        self,
+        *,
+        graph: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+        ids: list[str] | None = None,
+    ) -> ChunkPage:
+        """
+        A page of source chunks, or exactly the ones named.
+
+        :param ids: The chunks a search answer cited, resolved in one call.
+        """
+        name = graph or self.graph
+        payload = await self._get(
+            f"/v1/graphs/{name}/chunks", limit=limit, offset=offset, ids=ids
+        )
+        return ChunkPage.model_validate(payload)
 
     async def chunk(self, chunk_id: str, *, graph: str | None = None) -> ChunkItem:
         name = graph or self.graph

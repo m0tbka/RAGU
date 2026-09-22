@@ -8,6 +8,7 @@ than degrading into an empty source list that the service would report as a
 missing capability.
 """
 
+import math
 from functools import singledispatch
 from typing import Any
 
@@ -85,7 +86,9 @@ def _chunk_meta(chunk: Any) -> ChunkMeta:
     )
 
 
-def _community_source(source_id: str, summary: str | None) -> SourceItem:
+def _community_source(
+    source_id: str, summary: str | None, *, score: float | None = None
+) -> SourceItem:
     """
     One community-summary source, with its title lifted out of the body.
     """
@@ -94,6 +97,7 @@ def _community_source(source_id: str, summary: str | None) -> SourceItem:
         id=source_id,
         type="community_summary",
         content=body or summary or "",
+        score=score,
         meta=CommunityMeta(title=title),
     )
 
@@ -107,11 +111,15 @@ def _as_score(value: Any) -> float | None:
     """
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
+    # NaN is how a degraded reranker says "not scored" inside a float contract;
+    # passing it on would put a number on the wire that means nothing.
+    if math.isnan(value):
+        return None
     return float(value)
 
 
 @singledispatch
-def _sources_from_result(result: Any) -> list[SourceItem]:
+def _sources_from_result(result: Any, metrics: dict[str, Any]) -> list[SourceItem]:
     """
     Flatten an engine-specific retrieval result into flat sources.
 
@@ -120,6 +128,8 @@ def _sources_from_result(result: Any) -> list[SourceItem]:
     retrieval context instead.
 
     :param result: Engine-specific retrieval payload.
+    :param metrics: The retrieval's metrics, where some engines report scores
+        that the result itself does not carry.
     :return: Flat sources for the wire schema.
     """
     return []
@@ -131,7 +141,7 @@ _UNREGISTERED = _sources_from_result.registry[object]
 
 
 @_sources_from_result.register
-def _naive_sources(result: NaiveSearchResult) -> list[SourceItem]:
+def _naive_sources(result: NaiveSearchResult, metrics: dict[str, Any]) -> list[SourceItem]:
     scores = result.scores
     return [
         SourceItem(
@@ -146,12 +156,31 @@ def _naive_sources(result: NaiveSearchResult) -> list[SourceItem]:
 
 
 @_sources_from_result.register
-def _local_sources(result: LocalSearchResult) -> list[SourceItem]:
+def _local_sources(result: LocalSearchResult, metrics: dict[str, Any]) -> list[SourceItem]:
+    # Local search selects relations, summaries and chunks through the graph,
+    # not by similarity to the query, so the only relevance score they have is
+    # the reranker's — present when one ran, absent otherwise. Entities also
+    # carry the vector score that retrieved them, which stands in when no
+    # reranker reordered them.
+    reranked = metrics.get("rerank_scores") or {}
+    vector = {
+        row.get("id"): row.get("relevance_score")
+        for row in metrics.get("entities") or []
+        if isinstance(row, dict)
+    }
+
+    def score(kind: str, item_id: str) -> float | None:
+        value = _as_score((reranked.get(kind) or {}).get(item_id))
+        if value is None and kind == "entities":
+            value = _as_score(vector.get(item_id))
+        return value
+
     sources = [
         SourceItem(
             id=entity.id,
             type="entity",
             content=f"{entity.entity_name} — {entity.description}".strip(" —"),
+            score=score("entities", entity.id),
             meta=_entity_meta(entity),
         )
         for entity in result.entities
@@ -164,12 +193,15 @@ def _local_sources(result: LocalSearchResult) -> list[SourceItem]:
                 f"{relation.subject_name} {relation.relation_type} "
                 f"{relation.object_name}: {relation.description}"
             ).strip(),
+            score=score("relations", relation.id),
             meta=_relation_meta(relation),
         )
         for relation in result.relations
     ]
     sources += [
-        _community_source(summary.id, summary.summary)
+        _community_source(
+            summary.id, summary.summary, score=score("summaries", summary.id)
+        )
         for summary in result.summaries
     ]
     sources += [
@@ -177,6 +209,7 @@ def _local_sources(result: LocalSearchResult) -> list[SourceItem]:
             id=chunk.id,
             type="chunk",
             content=chunk.content,
+            score=score("chunks", chunk.id),
             meta=_chunk_meta(chunk),
         )
         for chunk in result.chunks
@@ -185,7 +218,7 @@ def _local_sources(result: LocalSearchResult) -> list[SourceItem]:
 
 
 @_sources_from_result.register
-def _global_sources(result: GlobalSearchResult) -> list[SourceItem]:
+def _global_sources(result: GlobalSearchResult, metrics: dict[str, Any]) -> list[SourceItem]:
     return [
         SourceItem(
             id=f"insight_{index}",
@@ -201,7 +234,7 @@ def _global_sources(result: GlobalSearchResult) -> list[SourceItem]:
 
 
 @_sources_from_result.register
-def _mix_sources(result: MixSearchResult) -> list[SourceItem]:
+def _mix_sources(result: MixSearchResult, metrics: dict[str, Any]) -> list[SourceItem]:
     # Entries are child retrieval containers, or full child responses when
     # MixQueryParams.ensemble_responses is set. Children overlap — local and
     # naive both return chunks — so the union is deduplicated.
@@ -226,7 +259,7 @@ def extract_sources(retrieval: SearchEngineRetrieve[Any] | None) -> list[SourceI
 
     result = retrieval.result
     if _sources_from_result.dispatch(type(result)) is not _UNREGISTERED:
-        return _sources_from_result(result)
+        return _sources_from_result(result, getattr(retrieval, "metrics", None) or {})
 
     # A result type this module does not model (a new engine, or a custom one):
     # keep the rendered context as one source rather than dropping the evidence.

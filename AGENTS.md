@@ -81,7 +81,7 @@ pytest -q --no-cov
 After modifying code, the agent **must**:
 
 1. Run `pytest -m "not slow and not integration"` and ensure it passes.
-2. If a new public class/function was added — re-export it from the subpackage `__init__.py` **and** from `ragu/__init__.py`.
+2. If a new public class/function was added — re-export it from the subpackage `__init__.py` **and** from `ragu/__init__.py`. `ragu`, `ragu.search_engine` and `ragu.api` resolve their names lazily: add the name to `_EXPORTS`, the `TYPE_CHECKING` block and `__all__` — never as a top-level import. One eager import there makes every `import ragu.<anything>` load the whole library again (fastembed, scikit-learn, pandas, nltk); `TestLightweightImport` in `tests/api` fails when the HTTP client starts paying for it.
 3. If a new prompt was added — register it in `DEFAULT_PROMPT_TEMPLATES` (`ragu/common/prompts/prompt_storage.py`). There is no auto-discovery.
 4. If a new dependency was added — update `pyproject.toml`.
 5. **Documentation — accuracy.** If you change a public API (rename/remove a class, function, parameter, default, or prompt name), update every doc example that references it. Grep the old symbol across `*.md` (exclude `.venv`, `.git`, `node_modules`) and fix the matches. Examples must stay runnable.
@@ -241,7 +241,7 @@ Edges cannot reference non-existent endpoints. `Index._validate_edge_endpoints_e
 When adding a new component, keep these non-obvious rules in mind:
 
 - **New search engines / extractors / builder modules** — inherit the relevant abstract base; check the abstract methods in source. The base class already wires up sync wrappers and prompt management.
-- **Re-export new public types** from both the subpackage `__init__.py` and `ragu/__init__.py`.
+- **Re-export new public types** from both the subpackage `__init__.py` and `ragu/__init__.py` — lazily, as rule 2 of "Workflow After Changes" describes.
 - **New storage adapters** — use `TypeVar` bounds (`NodeT = TypeVar("NodeT", bound=Node)`), accept `node_cls` / `edge_cls` in the constructor, implement all three lifecycle callbacks. Never hardcode `Entity` / `Relation`.
 - **New prompts** — define templates in `ragu/common/prompts/default_templates.py`, register a `RAGUInstruction` in `DEFAULT_PROMPT_TEMPLATES`, and (if structured output is needed) add a Pydantic model in `ragu/common/prompts/default_models.py`.
 

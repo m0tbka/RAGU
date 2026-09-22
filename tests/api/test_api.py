@@ -2820,11 +2820,13 @@ class TestConcurrencyHazards:
             async def score(self, text_1, text_2, **kwargs):
                 raise RuntimeError("down")
 
-        assert await ForgivingScorer(Broken()).score("q", ["a", "b", "c"]) == [
-            (0, 0.0),
-            (1, 0.0),
-            (2, 0.0),
-        ]
+        import math
+
+        degraded = await ForgivingScorer(Broken()).score("q", ["a", "b", "c"])
+        # The retrieval order survives, and the scores are NaN rather than 0.0:
+        # a zero is a real score and would reach a client as one.
+        assert [index for index, _ in degraded] == [0, 1, 2]
+        assert all(math.isnan(score) for _, score in degraded)
 
     async def test_two_graph_builds_do_not_cross_the_settings_singleton(self):
         # Settings is process-global and the write lock is per backend, so two
@@ -3885,3 +3887,470 @@ class TestCommittedSchema:
         assert ("/v1/search/local", "post") in operations
         assert ("/v1/graphs/{graph_id}/relations/select", "post") in operations
         assert schema["info"]["version"]
+
+
+class TestClientCaughtUp:
+    """
+    The client covers every read the service offers.
+
+    A consumer that has to reach into ``_get`` and ``_post`` to call a route is
+    maintaining a second client, and it drifts from this one on the next change.
+    """
+
+    @staticmethod
+    def _client():
+        import httpx
+
+        from ragu.api.client import RaguClient
+
+        app = create_app(ServiceSettings(backend="stub"))
+        return app, RaguClient(
+            "http://ragu", graph="default", transport=httpx.ASGITransport(app=app)
+        )
+
+    async def test_one_entity(self):
+        app, client = self._client()
+        async with LifespanRunner(app), client:
+            entity = await client.entity("entity_1")
+        assert entity.name == "Сенкевич"
+
+    async def test_entities_accept_sorting_filtering_and_ids(self):
+        app, client = self._client()
+        async with LifespanRunner(app), client:
+            by_degree = await client.entities(sort="degree", order="desc")
+            in_community = await client.entities(community_id="0")
+            by_id = await client.entities(ids=["entity_2", "entity_1"])
+        assert len(by_degree.entities) == 2
+        assert in_community.entities
+        assert [e.id for e in by_id.entities] == ["entity_2", "entity_1"]
+
+    async def test_chunks_collection(self):
+        app, client = self._client()
+        async with LifespanRunner(app), client:
+            page = await client.chunks(ids=["chunk_2", "nope"])
+        assert [c.id for c in page.chunks] == ["chunk_2"]
+
+    async def test_communities_by_id(self):
+        app, client = self._client()
+        async with LifespanRunner(app), client:
+            page = await client.communities(ids=["com-1"])
+        assert [c.id for c in page.communities] == ["com-1"]
+
+    async def test_select_relations(self):
+        app, client = self._client()
+        async with LifespanRunner(app), client:
+            induced = await client.select_relations(["entity_1", "entity_2"])
+            incident = await client.select_relations(["entity_1"], edge_scope="incident")
+        assert [r.id for r in induced.relations] == ["relation_1"]
+        assert [r.id for r in incident.relations] == ["relation_1"]
+
+    def test_every_graph_read_route_has_a_client_method(self):
+        # The thing that actually went wrong: routes were added and the client
+        # was not. This fails the next time that happens.
+        from ragu.api.client import RaguClient
+
+        expected = {
+            "entities", "entity", "relations", "select_relations", "neighbors",
+            "communities", "community", "chunks", "chunk", "consistency",
+        }
+        assert expected <= set(dir(RaguClient))
+
+
+class TestRerankerFromTheCommandLine:
+    """
+    ``python -m ragu.api`` builds the reranker the environment names.
+
+    ``create_app`` takes a reranker as a parameter, and the command line never
+    passed one: the documented injection point was unreachable from the only
+    entry point most deployments use.
+    """
+
+    @staticmethod
+    def _clear(monkeypatch):
+        import os
+
+        for key in list(os.environ):
+            if key.startswith(("LLM_", "RERANKER_", "EMBEDDER_")):
+                monkeypatch.delenv(key, raising=False)
+
+    def test_none_when_the_environment_names_none(self, monkeypatch):
+        from ragu.api.reranking import reranker_from_env
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("LLM_BASE_URL", "http://llm")
+        monkeypatch.setenv("LLM_API_KEY", "k")
+        monkeypatch.setenv("LLM_MODEL_NAME", "m")
+        assert reranker_from_env() is None
+
+    def test_missing_llm_credentials_do_not_crash_startup(self, monkeypatch):
+        # The backend reports missing credentials through /health; raising here
+        # would turn that into a container that restarts without saying why.
+        from ragu.api.reranking import reranker_from_env
+
+        self._clear(monkeypatch)
+        assert reranker_from_env() is None
+
+    def test_a_named_reranker_is_built(self, monkeypatch):
+        from ragu.api.reranking import reranker_from_env
+        from ragu.models.scorer import ScorerOpenAI
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("LLM_BASE_URL", "http://llm")
+        monkeypatch.setenv("LLM_API_KEY", "k")
+        monkeypatch.setenv("LLM_MODEL_NAME", "m")
+        monkeypatch.setenv("RERANKER_BASE_URL", "http://reranker:8000/v1")
+        monkeypatch.setenv("RERANKER_MODEL_NAME", "bge-reranker")
+
+        reranker = reranker_from_env()
+        assert isinstance(reranker, ScorerOpenAI)
+        assert reranker.model_name == "bge-reranker"
+
+    def test_a_reranker_without_a_model_is_left_out(self, monkeypatch):
+        from ragu.api.reranking import reranker_from_env
+
+        self._clear(monkeypatch)
+        monkeypatch.setenv("LLM_BASE_URL", "http://llm")
+        monkeypatch.setenv("LLM_API_KEY", "k")
+        monkeypatch.setenv("LLM_MODEL_NAME", "m")
+        monkeypatch.setenv("RERANKER_BASE_URL", "http://reranker:8000/v1")
+        assert reranker_from_env() is None
+
+    def test_the_command_line_passes_it_to_the_app(self, monkeypatch):
+        import sys
+
+        import ragu.api.__main__ as entry
+
+        sentinel = object()
+        seen = {}
+        monkeypatch.setattr(entry, "reranker_from_env", lambda: sentinel)
+        monkeypatch.setattr(
+            entry, "create_app",
+            lambda settings, reranker=None: seen.setdefault("reranker", reranker),
+        )
+        monkeypatch.setattr(entry.uvicorn, "run", lambda *a, **k: None)
+        monkeypatch.setattr(entry, "configure_logging", lambda level: None)
+        monkeypatch.setattr(sys, "argv", ["ragu.api", "--backend", "ragu"])
+
+        entry.main()
+        assert seen["reranker"] is sentinel
+
+
+class TestLocalSourceScores:
+    """
+    Local sources carry the relevance score the engine actually had.
+
+    Only naive chunks and global insights used to carry one, so a trace showed
+    0.0 against every entity and relation — a number, and a wrong one.
+    """
+
+    def test_an_entity_carries_the_vector_score_that_retrieved_it(self):
+        entity = make_entity("Сенкевич")
+        retrieval = LocalSearchRetrieve(
+            query="q",
+            result=LocalSearchResult(entities=[entity]),
+            metrics={"entities": [{"id": entity.id, "relevance_score": 0.82}]},
+        )
+        assert extract_sources(retrieval)[0].score == 0.82
+
+    def test_the_rerankers_score_wins_when_one_ran(self):
+        entity = make_entity("Сенкевич")
+        retrieval = LocalSearchRetrieve(
+            query="q",
+            result=LocalSearchResult(entities=[entity]),
+            metrics={
+                "entities": [{"id": entity.id, "relevance_score": 0.82}],
+                "rerank_scores": {"entities": {entity.id: 0.97}},
+            },
+        )
+        assert extract_sources(retrieval)[0].score == 0.97
+
+    def test_a_relation_scored_by_the_reranker_carries_it(self):
+        relation = Relation(
+            subject_id="a", object_id="b", subject_name="A", object_name="B",
+            relation_type="rel", description="d", relation_strength=1.0,
+            source_chunk_id=[],
+        )
+        retrieval = LocalSearchRetrieve(
+            query="q",
+            result=LocalSearchResult(relations=[relation]),
+            metrics={"rerank_scores": {"relations": {relation.id: 0.64}}},
+        )
+        assert extract_sources(retrieval)[0].score == 0.64
+
+    def test_an_unscored_relation_is_null_not_zero(self):
+        # Without a reranker a relation was selected through the graph and has
+        # no relevance score. null says so; 0.0 would claim it is irrelevant.
+        relation = Relation(
+            subject_id="a", object_id="b", subject_name="A", object_name="B",
+            relation_type="rel", description="d", relation_strength=1.0,
+            source_chunk_id=[],
+        )
+        retrieval = LocalSearchRetrieve(
+            query="q", result=LocalSearchResult(relations=[relation]), metrics={}
+        )
+        assert extract_sources(retrieval)[0].score is None
+
+    def test_a_degraded_rerank_score_never_reaches_the_wire(self):
+        import math
+
+        relation = Relation(
+            subject_id="a", object_id="b", subject_name="A", object_name="B",
+            relation_type="rel", description="d", relation_strength=1.0,
+            source_chunk_id=[],
+        )
+        retrieval = LocalSearchRetrieve(
+            query="q",
+            result=LocalSearchResult(relations=[relation]),
+            metrics={"rerank_scores": {"relations": {relation.id: math.nan}}},
+        )
+        assert extract_sources(retrieval)[0].score is None
+
+    async def test_the_engine_keeps_the_rerankers_scores(self):
+        # The core used to throw these away: _rerank_items kept the order and
+        # dropped the score.
+        from ragu.search_engine.search_functional import _rerank_items_scored
+
+        class Reversing:
+            async def score(self, query, texts, **kwargs):
+                return [(i, 1.0 - i / 10) for i in reversed(range(len(texts)))]
+
+        scored = await _rerank_items_scored("q", ["a", "b", "c"], str, Reversing())
+        assert scored == [("c", 0.8), ("b", 0.9), ("a", 1.0)]
+
+    async def test_without_a_reranker_scores_are_absent(self):
+        from ragu.search_engine.search_functional import _rerank_items_scored
+
+        scored = await _rerank_items_scored("q", ["a", "b"], str, None)
+        assert scored == [("a", None), ("b", None)]
+
+
+class TestRerankStage:
+    """
+    The reranker's time is its own stage, and parallel calls are not double-counted.
+    """
+
+    async def test_reranking_is_recorded_on_its_own_stage(self):
+        import asyncio
+
+        from ragu.api import usage as usage_module
+        from ragu.api.reranking import ForgivingScorer
+        from ragu.models.scorer import Scorer
+
+        class Slow(Scorer):
+            async def score(self, text_1, text_2, **kwargs):
+                await asyncio.sleep(0.02)
+                return [(i, 1.0) for i in range(len(text_2))]
+
+        usage_module.start()
+        await ForgivingScorer(Slow()).score("q", ["a", "b"])
+
+        stage = usage_module.current().stages[usage_module.RERANK_STAGE]
+        assert stage.calls == 1
+        assert stage.rerank_ms >= 15
+
+    async def test_rerank_calls_are_not_llm_calls(self):
+        # The call total is what the LLM budget counts.
+        from ragu.api import usage as usage_module
+        from ragu.api.reranking import ForgivingScorer
+        from ragu.models.scorer import Scorer
+
+        class Fast(Scorer):
+            async def score(self, text_1, text_2, **kwargs):
+                return [(0, 1.0)]
+
+        usage_module.start()
+        await ForgivingScorer(Fast()).score("q", ["a"])
+        await ForgivingScorer(Fast()).score("q", ["a"])
+
+        assert usage_module.current().stages[usage_module.RERANK_STAGE].calls == 2
+        assert usage_module.current().calls == 0
+
+    async def test_parallel_calls_are_timed_once_not_summed(self):
+        # The engines fan out through asyncio.gather. Four parallel 30 ms calls
+        # took about 30 ms of the request, not 120.
+        import asyncio
+
+        from ragu.api import usage as usage_module
+        from ragu.api.reranking import ForgivingScorer
+        from ragu.models.scorer import Scorer
+
+        class Slow(Scorer):
+            async def score(self, text_1, text_2, **kwargs):
+                await asyncio.sleep(0.03)
+                return [(0, 1.0)]
+
+        usage_module.start()
+        scorer = ForgivingScorer(Slow())
+        await asyncio.gather(*[scorer.score("q", ["a"]) for _ in range(4)])
+
+        spent = usage_module.current().stages[usage_module.RERANK_STAGE].rerank_ms
+        assert 25 <= spent < 80
+
+    async def test_a_timed_out_reranker_still_counts_its_time(self):
+        import asyncio
+
+        from ragu.api import usage as usage_module
+        from ragu.api.reranking import ForgivingScorer
+        from ragu.models.scorer import Scorer
+
+        class Hanging(Scorer):
+            async def score(self, text_1, text_2, **kwargs):
+                await asyncio.sleep(10)
+
+        usage_module.start()
+        await ForgivingScorer(Hanging(), timeout=0.02).score("q", ["a"])
+        assert usage_module.current().stages[usage_module.RERANK_STAGE].rerank_ms >= 15
+
+    async def test_retrieval_excludes_the_rerankers_time(self):
+        import asyncio
+
+        from ragu.api import usage as usage_module
+        from ragu.api.reranking import ForgivingScorer
+        from ragu.models.scorer import Scorer
+
+        class Slow(Scorer):
+            async def score(self, text_1, text_2, **kwargs):
+                await asyncio.sleep(0.04)
+                return [(0, 1.0)]
+
+        usage_module.start()
+        with usage_module.measure_retrieval("local"):
+            await asyncio.sleep(0.01)
+            await ForgivingScorer(Slow()).score("q", ["a"])
+
+        record = usage_module.current()
+        assert record.stages["local"].retrieval_ms < 35
+        assert record.stages[usage_module.RERANK_STAGE].rerank_ms >= 35
+
+    async def test_parallel_generation_is_not_double_counted_either(self):
+        import asyncio
+
+        from ragu.api import usage as usage_module
+
+        class SlowLLM:
+            async def chat_completion(self, conversation, *args, **kwargs):
+                await asyncio.sleep(0.03)
+                return "answer"
+
+        usage_module.start()
+        counting = usage_module.CountingLLM(SlowLLM())
+        await asyncio.gather(*[
+            counting.chat_completion([{"content": "p"}], desc="local") for _ in range(4)
+        ])
+        stage = usage_module.current().stages["local"]
+        assert stage.calls == 4
+        assert 25 <= stage.generation_ms < 80
+
+    def test_the_stage_reaches_the_wire(self):
+        from ragu.api.models import StageUsageModel
+
+        assert "rerank_ms" in StageUsageModel.model_fields
+
+
+class TestGraphTimestamps:
+    """
+    A graph reports when it was written, and admits when it cannot say more.
+    """
+
+    def test_updated_at_is_the_latest_write(self, tmp_path):
+        import os
+        import time
+
+        from ragu.api.backends.ragu_backend import _folder_timestamps
+
+        older = tmp_path / "a.json"
+        newer = tmp_path / "b.json"
+        older.write_text("{}")
+        newer.write_text("{}")
+        past = time.time() - 3600
+        os.utime(older, (past, past))
+
+        _, updated = _folder_timestamps(str(tmp_path))
+        assert abs(updated.timestamp() - newer.stat().st_mtime) < 1
+
+    def test_a_missing_folder_yields_nothing_rather_than_a_date(self, tmp_path):
+        from ragu.api.backends.ragu_backend import _folder_timestamps
+
+        assert _folder_timestamps(str(tmp_path / "nope")) == (None, None)
+
+    def test_created_at_is_never_guessed(self, tmp_path, monkeypatch):
+        # Linux does not expose a creation time. The oldest modification time is
+        # not one either — an in-place rebuild rewrites every file — so the
+        # field stays null rather than carrying a plausible wrong date.
+        import os
+
+        from ragu.api.backends import ragu_backend
+
+        (tmp_path / "a.json").write_text("{}")
+        real_stat = os.stat
+
+        class NoBirth:
+            def __init__(self, result):
+                self._result = result
+
+            def __getattr__(self, name):
+                if name == "st_birthtime":
+                    raise AttributeError(name)
+                return getattr(self._result, name)
+
+        monkeypatch.setattr(
+            ragu_backend.os, "stat", lambda path, *a, **k: NoBirth(real_stat(path, *a, **k))
+        )
+        created, updated = ragu_backend._folder_timestamps(str(tmp_path))
+        assert created is None
+        assert updated is not None
+
+    def test_stats_carry_the_dates(self):
+        with build_client() as client:
+            body = client.get("/v1/graphs/default/stats").json()
+        assert body["updated_at"].startswith("2026-01-01")
+        assert body["created_at"].startswith("2026-01-01")
+
+
+class TestLightweightImport:
+    """
+    Importing the client does not import the library behind the service.
+
+    It used to take three seconds and three thousand modules, fastembed,
+    scikit-learn, pandas and nltk among them, because every ``ragu.*`` import
+    ran a package init that loaded the whole library.
+    """
+
+    def test_the_client_imports_without_the_engines_or_the_server(self):
+        import subprocess
+        import sys
+
+        probe = (
+            "import sys; import ragu.api.client; "
+            "heavy = [m for m in ('fastembed', 'sklearn', 'pandas', 'nltk', "
+            "'networkx', 'openai', 'fastapi', 'starlette', 'uvicorn') "
+            "if m in sys.modules]; print(','.join(heavy))"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", probe], capture_output=True, text=True, timeout=120
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == ""
+
+    @pytest.mark.parametrize("package", ["ragu", "ragu.search_engine", "ragu.api"])
+    def test_the_package_still_exposes_every_public_name(self, package):
+        import importlib
+
+        module = importlib.import_module(package)
+        # ``__all__`` is written out so linters can read it; this keeps it from
+        # drifting away from the table the lazy lookup actually serves.
+        assert set(module.__all__) - {"__version__"} == set(module._EXPORTS)
+        for name in module.__all__:
+            assert getattr(module, name) is not None, name
+
+    def test_an_unknown_name_is_still_an_attribute_error(self):
+        import ragu
+
+        with pytest.raises(AttributeError):
+            ragu.DoesNotExist
+
+    def test_engine_parameters_keep_their_old_import_path(self):
+        from ragu.search_engine.local_search import LocalParams as old
+        from ragu.search_engine.params import LocalParams as new
+
+        assert old is new
