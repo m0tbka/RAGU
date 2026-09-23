@@ -83,6 +83,35 @@ fastembed, sklearn и остальное как обязательные зав�
 
 ---
 
+## Четвёртая серия: раскладка пакета
+
+Контракт не менялся: `docs/openapi.json` совпадает байт в байт, тесты те же 318.
+Поменялось только то, где лежит код.
+
+| Было | Стало |
+|---|---|
+| `routes.py`, 1306 строк | `routes/` по тегам OpenAPI: `search`, `graphs`, `browse`, `jobs`, `service`, общее — в `deps` |
+| `models.py`, 777 строк | `models/`: `common`, `search`, `sources`, `graphs`, `jobs`, `service` |
+| `backends/ragu_backend.py`, 1190 строк | `backends/ragu_backend/`: `backend`, `graph_view`, `engines`, `ingest`, `settings` |
+| `backends/base.py`, 668 строк | `base.py` — только интерфейс; требования режимов и `GraphStats` — в `capabilities.py` |
+| 18 модулей в корне пакета | `search/` — mapping, reranking, usage; `runtime/` — middleware, auth, jobs, registry, metrics, request_context, logging_setup |
+| `tests/api/test_api.py`, 4356 строк | 16 модулей по той же схеме, общие помощники — в `support.py` |
+
+**Потребителю менять нечего.** `ragu.api`, `ragu.api.client`, `ragu.api.models`,
+`ragu.api.app`, `ragu.api.config`, `ragu.api.backends` и
+`from ragu.api.backends.ragu_backend import RaguBackend` работают как раньше.
+`ragu.api.models` теперь ещё и реэкспортирует параметры движков (`LocalParams` и
+остальные), чтобы запрос собирался из одного импорта.
+
+**Тому, кто дорабатывает.** Внутренние модули переехали без шимов:
+`ragu.api.mapping` → `ragu.api.search.mapping`, `ragu.api.usage` →
+`ragu.api.search.usage`, `ragu.api.middleware` → `ragu.api.runtime.middleware` и
+так далее. Чтение графа теперь у `GraphView`: кеши узлов, рёбер и степеней — его
+состояние (`backend.view`), а не бэкенда. Полная карта — в `ragu/api/README.md`,
+раздел «Package layout».
+
+---
+
 ## Что можно удалить у себя
 
 - кеш всех связей и фильтрацию индуцированного подграфа на клиенте;

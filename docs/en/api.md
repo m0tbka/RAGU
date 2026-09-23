@@ -650,7 +650,7 @@ unsupported mode before paying for a generation call, and what makes
 `graph_loaded` truthful.
 
 **Why conversion dispatches on result types.** The engines are part of this
-package and versioned with it, so `ragu/api/mapping.py` dispatches on the
+package and versioned with it, so `ragu/api/search/mapping.py` dispatches on the
 concrete `*SearchResult` classes instead of probing for attributes. A result
 type that changes shape then fails loudly instead of producing an empty source
 list that the service would report as a missing capability.
@@ -662,7 +662,7 @@ the backend base class so every backend enforces them identically.
 
 ## Logging
 
-`python -m ragu.api` calls `configure_logging` (`ragu/api/logging_setup.py`),
+`python -m ragu.api` calls `configure_logging` (`ragu/api/runtime/logging_setup.py`),
 which installs an intercept handler on the stdlib root and re-emits every
 record through loguru. Uvicorn, httpx and the service itself then share the one
 sink and one format the engines already use, so a single request can be

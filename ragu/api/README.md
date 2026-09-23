@@ -63,35 +63,75 @@ multi-gigabyte working directories that must stay out of it.
 ## Package layout
 
 ```
+__init__.py  create_app and ServiceSettings, resolved on first use so that a
+             client importing the schemas does not load the server
+__main__.py  `python -m ragu.api`: settings, logging, the reranker, uvicorn
 app.py       application factory: lifespan, exception handlers, error envelope
-routes.py    per mode: search, /retrieve, /batch, /stream; plus /health,
-             /health/live, /health/ready
-models.py    request/response schemas; the request models embed the engines'
-             own parameter dataclasses
-mapping.py   engine results → wire schema, dispatched on the concrete result types
-errors.py    RaguServiceError subclasses; every one renders through ErrorResponse
 config.py    ServiceSettings and GraphSpec — the RAGU_API_* environment contract
-client.py    typed httpx client; returns the models above, raises RaguApiError
-registry.py  GraphRegistry: one backend per configured graph, built one at a time
-jobs.py      JobManager over a JobStore interface, for work too long for a request
-usage.py     CountingLLM: per-request LLM calls and tokens, by stage
-reranking.py ForgivingScorer: a reranker outage costs ranking, not the answer
-metrics.py   Prometheus text exposition, no dependency
-middleware.py  request id, auth, body limit, metrics, admission
-auth.py      API-key check
-request_context.py  the request id, kept apart so errors and middleware do not
-             import each other
-logging_setup.py  intercepts stdlib logging (uvicorn, httpx) into loguru, so the
-             process has one sink; only `python -m ragu.api` installs it
+errors.py    RaguServiceError subclasses; every one renders through ErrorResponse
+client.py    typed httpx client; returns the models below, raises RaguApiError
+
+models/      request/response schemas, one module per resource. Import them
+             from `ragu.api.models`, which re-exports every one
+  common.py      search modes, capabilities, the error envelope
+  search.py      search, retrieve and batch requests and responses; the requests
+                 embed the engines' own parameter dataclasses
+  sources.py     the evidence items and their typed meta
+  graphs.py      the catalogue and the graph-reading views
+  jobs.py        build requests and job records
+  service.py     health and the ontology
+
+routes/      one module per OpenAPI tag; __init__ assembles them, mounting the
+             search router under /v1/graphs/{graph_id} and on the flat /v1
+  deps.py        the registry, the backend a request addresses, shared responses
+  search.py      the four modes, each as an answer, /retrieve, /batch, /stream
+  graphs.py      the catalogue, capabilities, stats, consistency
+  browse.py      entities, relations, communities, chunks
+  jobs.py        document ingestion, reindexing, job records
+  service.py     /health, /health/live, /health/ready, /metrics, /v1/ontology
+
+search/      between the engine and the response; nothing here imports FastAPI
+  mapping.py     engine results → wire schema, dispatched on the concrete result types
+  reranking.py   ForgivingScorer: a reranker outage costs ranking, not the
+                 answer; reranker_from_env builds the reranker from RERANKER_*
+  usage.py       CountingLLM and the stage clocks: calls, tokens, and retrieval,
+                 generation and rerank time, per request
+
+runtime/     around the request rather than inside it
+  middleware.py      request id, auth, body limit, metrics, admission
+  auth.py            API-key check
+  request_context.py the request id, kept apart so errors and middleware do not
+                     import each other
+  registry.py        GraphRegistry: one backend per configured graph, built one
+                     at a time
+  jobs.py            JobManager over a JobStore interface, for work too long for
+                     a request
+  metrics.py         Prometheus text exposition, no dependency
+  logging_setup.py   intercepts stdlib logging (uvicorn, httpx) into loguru, so
+                     the process has one sink; only `python -m ragu.api` installs it
+
 backends/
-  base.py        SearchBackend ABC (search / retrieve / stream over a
-                 SearchCall), GraphStats, the shared request bounds and the
-                 capability rules both backends obey
-  stub.py        canned answers; simulates a graph missing a capability by
-                 reporting zero for that store, so it exercises the real path
-  ragu_backend.py loads the graph, keeps one engine per mode, wraps in
-                 QueryPlanEngine when use_query_plan
+  base.py            SearchBackend ABC (search / retrieve / stream over a
+                     SearchCall) and the request bounds every backend applies
+  capabilities.py    GraphStats and MODE_REQUIREMENTS: what each mode needs the
+                     graph to hold, and what a 409 says when it does not
+  stub.py            canned answers; simulates a graph missing a capability by
+                     reporting zero for that store, so it exercises the real path
+  ragu_backend/      the real backend
+    backend.py       RaguBackend: lifecycle, the search entry points, and the
+                     graph surface, delegated to GraphView
+    graph_view.py    GraphView: every read of the graph, and the node, edge and
+                     degree lists it keeps while they fit
+    engines.py       leaf engines per mode and language (LRU), mix assembled per
+                     request, RecordingEngine for its children's failures
+    ingest.py        build and reindex, under the write lock
+    settings.py      isolated_settings / exclusive_settings around the
+                     process-wide Settings singleton
 ```
+
+The tests in `tests/api/` follow the same split — `test_search.py`,
+`test_browse.py`, `test_graph_view.py`, `test_ragu_backend.py` and so on — with
+the helpers they share in `support.py`.
 
 Three couplings worth knowing before changing anything here:
 
@@ -113,14 +153,15 @@ Three couplings worth knowing before changing anything here:
 
 ## Adding a search mode
 
-1. Add the mode to `SearchMode` (`models.py`) and a request model beside the
-   existing ones.
-2. Add its `ModeRequirement` to `MODE_REQUIREMENTS` (`backends/base.py`) — the
-   capabilities it `requires` and both messages. `GraphStats.missing_for` reads
-   them; nothing else needs teaching.
-3. Register the engine's result type in `mapping.py` with
+1. Add the mode to `SearchMode` (`models/common.py`) and its request models to
+   `models/search.py`, beside the existing ones.
+2. Add its `ModeRequirement` to `MODE_REQUIREMENTS` (`backends/capabilities.py`)
+   — the capabilities it `requires` and both messages. `GraphStats.missing_for`
+   reads them; nothing else needs teaching.
+3. Register the engine's result type in `search/mapping.py` with
    `@_sources_from_result.register`. Without it the mode still works, but its
    retrieval degrades to a single `to_text()` source.
-4. Add the request models and the four routes. The backend needs no new
-   method: `search`, `retrieve` and `stream` all take a `SearchCall` carrying
-   the mode.
+4. Teach `_build_engine` (`backends/ragu_backend/engines.py`) to construct the
+   engine — anything it does not recognise is built as a naive engine.
+5. Add the four routes to `routes/search.py`. The backend needs no new method:
+   `search`, `retrieve` and `stream` all take a `SearchCall` carrying the mode.
