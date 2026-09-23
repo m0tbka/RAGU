@@ -463,6 +463,9 @@ class TestStreamRoutes:
             def require_capability(self, mode, mix_engines=None):
                 pass
 
+            async def require_budget(self, call, *, generate=True):
+                pass
+
             async def stream(self, call):
                 yield SearchStreamEvent("meta", {"mode": call.mode, "sources": []})
                 yield SearchStreamEvent(
@@ -476,6 +479,26 @@ class TestStreamRoutes:
         assert response.status_code == 200
         assert [name for name, _ in self.parse(response.text)] == ["meta", "error"]
 
+
+    def test_a_budget_the_stream_cannot_fit_is_refused_before_it_opens(self):
+        # Inside an open stream a refusal could only be an event after a 200.
+        from ragu.api.backends.stub import StubBackend
+        from ragu.api.errors import BudgetExceededError
+
+        class OverBudget(StubBackend):
+            async def require_budget(self, call, *, generate=True):
+                raise BudgetExceededError(
+                    "Global search would make 475 LLM calls here", mode=call.mode
+                )
+
+        settings = ServiceSettings(backend="stub")
+        backend = OverBudget(settings, settings.resolved_graphs()[0])
+        with TestClient(create_app(settings, backend=backend)) as client:
+            response = client.post("/v1/search/global/stream", json={"query": "q"})
+
+        assert response.status_code == 429
+        assert response.headers["content-type"].startswith("application/json")
+        assert response.json()["error"]["code"] == "BUDGET_EXCEEDED"
 
 class TestLanguagePerRequest:
     """The answer language belongs to the request, not to the corpus.

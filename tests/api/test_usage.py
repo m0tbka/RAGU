@@ -12,6 +12,7 @@ pytest.importorskip(
 
 from tests.api.support import (
     build_client,
+    pause,
 )
 
 
@@ -75,11 +76,15 @@ class TestUsageAccounting:
         from ragu.api.search.usage import CountingLLM
 
         class FakeLLM:
+            sent = 0
+
             async def batch_chat_completion(self, conversations, *args, **kwargs):
+                self.sent += len(conversations)
                 return [""] * len(conversations)
 
-        counted = CountingLLM(FakeLLM())
-        usage.start(max_calls=3)
+        llm = FakeLLM()
+        counted = CountingLLM(llm)
+        record = usage.start(max_calls=3)
 
         await counted.batch_chat_completion([[]] * 2, desc="GlobalSearch batch meta-eval")
         with pytest.raises(BudgetExceededError) as failure:
@@ -89,6 +94,9 @@ class TestUsageAccounting:
 
         assert failure.value.status_code == 429
         assert "min_cluster_size" in failure.value.message
+        # Refused before it was sent: the two calls that fit are all that was paid.
+        assert llm.sent == 2
+        assert record.calls == 2
 
     async def test_a_token_budget_stops_one_too(self):
         from ragu.api.search import usage
@@ -110,17 +118,141 @@ class TestUsageAccounting:
             await counted.batch_chat_completion([[]], desc="stage")
 
 
+
+class TestBudgetBeforeSending:
+    """
+    A call that cannot fit the budget is refused before it leaves, not after.
+
+    The budget used to be checked as answers came back, so a batch was paid for
+    in full before anything could say it was over: global search sent every one
+    of its 474 rating calls against a budget of 12 and then reported the overrun.
+    """
+
+    class FakeLLM:
+        def __init__(self, answer=""):
+            self.answer = answer
+            self.sent = 0
+
+        async def chat_completion(self, conversation, *args, **kwargs):
+            self.sent += 1
+            return self.answer
+
+        async def batch_chat_completion(self, conversations, *args, **kwargs):
+            import asyncio
+
+            self.sent += len(conversations)
+            # Yield, as a real call would, so concurrent batches interleave.
+            await asyncio.sleep(0)
+            return [self.answer] * len(conversations)
+
+        async def stream_chat_completion(self, conversation, *args, **kwargs):
+            self.sent += 1
+            for word in ("a", "b", "c"):
+                yield word
+
+    class Words:
+        def encode(self, text):
+            return text.split()
+
+    async def test_an_oversized_batch_is_refused_before_it_is_sent(self):
+        from ragu.api.errors import BudgetExceededError
+        from ragu.api.search import usage
+        from ragu.api.search.usage import CountingLLM
+
+        llm = self.FakeLLM()
+        record = usage.start(max_calls=12)
+
+        with pytest.raises(BudgetExceededError) as failure:
+            await CountingLLM(llm).batch_chat_completion(
+                [[]] * 474, desc="GlobalSearch batch meta-eval"
+            )
+
+        assert llm.sent == 0
+        assert record.calls == 0
+        assert "474" in failure.value.message
+        assert "Refused before sending" in failure.value.message
+
+    async def test_a_prompt_over_the_token_budget_is_not_sent(self):
+        from ragu.api.errors import BudgetExceededError
+        from ragu.api.search import usage
+        from ragu.api.search.usage import CountingLLM
+
+        llm = self.FakeLLM()
+        usage.start(max_tokens=4)
+
+        with pytest.raises(BudgetExceededError):
+            await CountingLLM(llm, encoder=self.Words()).chat_completion(
+                [{"role": "user", "content": "one two three four five"}], desc="stage"
+            )
+
+        assert llm.sent == 0
+
+    async def test_concurrent_batches_cannot_overrun_it_together(self):
+        # An ensemble runs its children side by side; each batch alone fits the
+        # budget, and the two together must not.
+        import asyncio
+
+        from ragu.api.errors import BudgetExceededError
+        from ragu.api.search import usage
+        from ragu.api.search.usage import CountingLLM
+
+        llm = self.FakeLLM()
+        counted = CountingLLM(llm)
+        record = usage.start(max_calls=3)
+
+        outcomes = await asyncio.gather(
+            counted.batch_chat_completion([[]] * 2, desc="local"),
+            counted.batch_chat_completion([[]] * 2, desc="global"),
+            return_exceptions=True,
+        )
+
+        assert sum(isinstance(outcome, BudgetExceededError) for outcome in outcomes) == 1
+        assert llm.sent == 2
+        assert record.calls == 2
+
+    async def test_an_abandoned_stream_still_counts_its_call(self):
+        from ragu.api.search import usage
+        from ragu.api.search.usage import CountingLLM
+
+        record = usage.start()
+        stream = CountingLLM(self.FakeLLM()).stream_chat_completion(
+            [{"role": "user", "content": "q"}], desc="stage"
+        )
+
+        assert await stream.__anext__() == "a"
+        await stream.aclose()
+
+        assert record.calls == 1
+
+    async def test_a_delivered_stream_is_recorded_not_refused(self):
+        # Its answer is already with the client; an overrun can only stop the
+        # next call, which the check on dispatch then does.
+        from ragu.api.search import usage
+        from ragu.api.search.usage import CountingLLM
+
+        record = usage.start(max_tokens=2)
+        counted = CountingLLM(self.FakeLLM(), encoder=self.Words())
+
+        words = [
+            word
+            async for word in counted.stream_chat_completion(
+                [{"role": "user", "content": ""}], desc="stage"
+            )
+        ]
+
+        assert words == ["a", "b", "c"]
+        assert record.completion_tokens == 3
+
 class TestStageTimings:
     """A dashboard splits retrieval from generation without measuring it itself."""
 
     async def test_generation_is_timed_where_it_happens(self):
-        import asyncio
 
         from ragu.api.search import usage as usage_module
 
         class SlowLLM:
             async def chat_completion(self, conversation, *args, **kwargs):
-                await asyncio.sleep(0.02)
+                await pause(0.02)
                 return "answer"
 
         usage_module.start()
@@ -132,19 +264,18 @@ class TestStageTimings:
         assert stage.generation_ms >= 15
 
     async def test_retrieval_is_what_the_llm_did_not_take(self):
-        import asyncio
 
         from ragu.api.search import usage as usage_module
 
         class SlowLLM:
             async def chat_completion(self, conversation, *args, **kwargs):
-                await asyncio.sleep(0.02)
+                await pause(0.02)
                 return "answer"
 
         usage_module.start()
         counting = usage_module.CountingLLM(SlowLLM())
         with usage_module.measure_retrieval("local"):
-            await asyncio.sleep(0.02)
+            await pause(0.02)
             await counting.chat_completion([{"content": "prompt"}], desc="local")
 
         stage = usage_module.current().stages["local"]
@@ -167,7 +298,6 @@ class TestRerankStage:
     """
 
     async def test_reranking_is_recorded_on_its_own_stage(self):
-        import asyncio
 
         from ragu.api.search import usage as usage_module
         from ragu.api.search.reranking import ForgivingScorer
@@ -175,7 +305,7 @@ class TestRerankStage:
 
         class Slow(Scorer):
             async def score(self, text_1, text_2, **kwargs):
-                await asyncio.sleep(0.02)
+                await pause(0.02)
                 return [(i, 1.0) for i in range(len(text_2))]
 
         usage_module.start()
@@ -213,7 +343,7 @@ class TestRerankStage:
 
         class Slow(Scorer):
             async def score(self, text_1, text_2, **kwargs):
-                await asyncio.sleep(0.03)
+                await pause(0.03)
                 return [(0, 1.0)]
 
         usage_module.start()
@@ -235,11 +365,12 @@ class TestRerankStage:
                 await asyncio.sleep(10)
 
         usage_module.start()
-        await ForgivingScorer(Hanging(), timeout=0.02).score("q", ["a"])
-        assert usage_module.current().stages[usage_module.RERANK_STAGE].rerank_ms >= 15
+        # The timeout is asyncio's own timer, which can fire up to one clock
+        # resolution (15.6 ms on Windows) early: the floor sits below it by more.
+        await ForgivingScorer(Hanging(), timeout=0.05).score("q", ["a"])
+        assert usage_module.current().stages[usage_module.RERANK_STAGE].rerank_ms >= 30
 
     async def test_retrieval_excludes_the_rerankers_time(self):
-        import asyncio
 
         from ragu.api.search import usage as usage_module
         from ragu.api.search.reranking import ForgivingScorer
@@ -247,12 +378,12 @@ class TestRerankStage:
 
         class Slow(Scorer):
             async def score(self, text_1, text_2, **kwargs):
-                await asyncio.sleep(0.04)
+                await pause(0.04)
                 return [(0, 1.0)]
 
         usage_module.start()
         with usage_module.measure_retrieval("local"):
-            await asyncio.sleep(0.01)
+            await pause(0.01)
             await ForgivingScorer(Slow()).score("q", ["a"])
 
         record = usage_module.current()
@@ -266,7 +397,7 @@ class TestRerankStage:
 
         class SlowLLM:
             async def chat_completion(self, conversation, *args, **kwargs):
-                await asyncio.sleep(0.03)
+                await pause(0.03)
                 return "answer"
 
         usage_module.start()

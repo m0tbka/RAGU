@@ -414,6 +414,20 @@ class SearchBackend(ABC):
             missing_capability=missing,
         )
 
+    async def require_budget(self, call: SearchCall, *, generate: bool = True) -> None:
+        """
+        Refuse a call whose LLM cost is known in advance to exceed its budget.
+
+        Runs before anything else does, so an over-budget request is refused
+        while it is still free. A backend that cannot predict what a call costs
+        checks nothing here; the per-call check in :mod:`ragu.api.search.usage`
+        still stops it at the first call that would overrun.
+
+        :param call: The resolved request.
+        :param generate: Whether answers will be written, or context only retrieved.
+        :raises BudgetExceededError: If the call cannot fit its budget.
+        """
+
     @staticmethod
     def no_evidence(mode: SearchMode) -> CapabilityUnavailableError:
         """

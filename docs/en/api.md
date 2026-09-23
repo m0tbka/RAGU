@@ -439,8 +439,11 @@ empty query does not fail the batch. `RAGU_API_MAX_BATCH_SIZE` bounds the list.
 `POST /v1/search/{mode}/stream` returns `text/event-stream`: one `meta` event
 carrying the retrieval and the engine report, then `delta` events carrying the
 text, then `done` with the final engine report. A failure after the headers are
-sent arrives as an `error` event — the capability check runs *before* the
-response starts, so an unservable mode still fails with a status code.
+sent arrives as an `error` event carrying the `code` a status response would
+have had (`BUDGET_EXCEEDED`, `GRAPH_BUSY`, …) or `INTERNAL_ERROR`. The
+capability and budget checks run *before* the response starts, so an
+unservable mode — or a global search the budget cannot cover — still fails
+with a status code.
 
 ### What actually ran
 
@@ -555,6 +558,17 @@ stop a runaway one, not close enough to bill from.
 | `RAGU_API_MAX_TOKENS_PER_REQUEST` | — | Over it, `429 BUDGET_EXCEEDED` |
 | `RAGU_API_MAX_CONCURRENT_GENERATIONS` | — | Beyond it, `429 TOO_MANY_REQUESTS` |
 
+Budgets are enforced before the money goes, not after. A call is counted as it
+is sent, and a call or batch that would take the request over its call
+allowance — or whose prompts alone would take it over the token allowance — is
+refused before it leaves, so the refusal itself costs nothing. Global search is
+counted before its first call: it rates every community that survives
+`min_cluster_size` against every query, the graph fixes how many there are, and
+a global request the budget cannot cover gets its `429` up front — before a
+stream even opens. In `mix`, the global child's rating pass is counted the same
+way. Only completion tokens are known after the fact: answers that take a
+request over its token budget stop it at its next call.
+
 Refusing at the door is deliberate. Without a ceiling every accepted request
 fans straight out to the LLM and the provider's rate limit becomes the queue —
 held open inside this process, one socket and one buffer per waiting request.
@@ -607,7 +621,7 @@ All errors share one envelope:
 |---|---|---|
 | 400 | `INVALID_REQUEST` | empty `query`, bad field type, unknown field |
 | 401 | `UNAUTHORIZED` | no accepted API key was presented |
-| 429 | `BUDGET_EXCEEDED` | the request spent its allowance of calls or tokens |
+| 429 | `BUDGET_EXCEEDED` | the request cannot fit its allowance of calls or tokens; refused before the calls that would overrun it are sent |
 | 429 | `TOO_MANY_REQUESTS` | the service is already at its generation ceiling |
 | 413 | `PAYLOAD_TOO_LARGE` | the request body exceeds the limit |
 | 504 | `REQUEST_TIMEOUT` | the request outlived RAGU_API_REQUEST_TIMEOUT |

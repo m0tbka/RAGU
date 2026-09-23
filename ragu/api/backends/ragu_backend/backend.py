@@ -36,18 +36,20 @@ from ragu.api.backends.ragu_backend.settings import exclusive_settings
 from ragu.api.config import GraphSpec, ServiceSettings
 from ragu.api.errors import (
     BackendExecutionError,
+    BudgetExceededError,
     RaguServiceError,
     ServiceNotReadyError,
 )
 from ragu.api.models import SearchMode
 from ragu.api.search.mapping import extract_sources, to_outcome
 from ragu.api.search.reranking import ForgivingScorer
-from ragu.api.search.usage import CountingLLM, measure_retrieval
+from ragu.api.search.usage import CountingLLM, measure_retrieval, remaining_calls
 from ragu.common.logger import logger
 from ragu.models.embedder import Embedder
 from ragu.models.llm import LLM
 from ragu.models.scorer import Scorer
 from ragu.search_engine.base_engine import BaseEngine
+from ragu.search_engine.params import GlobalSearchParams
 from ragu.search_engine.query_plan import QueryPlanEngine
 
 
@@ -424,6 +426,59 @@ class RaguBackend(EngineAssembly, Ingestion, SearchBackend):
 
     # --- searching ------------------------------------------------------------
 
+    async def require_budget(self, call: SearchCall, *, generate: bool = True) -> None:
+        """
+        Refuse a global search the budget cannot cover, before its first call.
+
+        Global search is the mode whose cost is both large and known up front: it
+        rates every community that survives ``min_cluster_size`` against every
+        query before it writes a word. Counting them first makes an over-budget
+        request a free 429. The per-call check alone would refuse a rating pass
+        that does not fit, but one that just fits would be paid for in full and
+        the answer after it refused. In ``mix`` only the global child's rating
+        pass is counted — a lower bound on what the ensemble spends, which is all
+        a refusal needs. With no budget configured nothing is counted at all.
+        """
+        remaining = remaining_calls()
+        if remaining is None:
+            return
+        if call.mode == "global":
+            params = self.bound_params(call.params) if call.params is not None else None
+            who, remedy = "Global search", "raise min_cluster_size or the budget"
+        elif call.mode == "mix" and "global" in call.mix_engines:
+            params = self._child_params("global", call)
+            # The ensemble reads its children's context; it writes the answer.
+            generate = False
+            who = "The global child of this ensemble"
+            remedy = (
+                "raise global_params.min_cluster_size, drop global from engines, or "
+                "raise the budget"
+            )
+        else:
+            return
+
+        self.require_idle()
+        rerank = call.rerank and self._reranker is not None
+        engine = self._leaf_engine("global", call.language or self.language, rerank)
+        planned_calls = getattr(engine, "planned_calls", None)
+        if planned_calls is None:
+            return
+        planned = await planned_calls(list(call.queries), params, generate=generate)
+        if planned <= remaining:
+            return
+
+        min_cluster_size = getattr(
+            params, "min_cluster_size", GlobalSearchParams().min_cluster_size
+        )
+        answers = ", plus one answer per query" if generate else ""
+        raise BudgetExceededError(
+            f"{who} would make {planned} LLM calls here — one for every community "
+            f"that survives min_cluster_size={min_cluster_size}, for every "
+            f"query{answers} — and this request may make {remaining} more. Refused "
+            f"before the first one: {remedy}.",
+            mode=call.mode,
+        )
+
     async def stream(self, call: SearchCall) -> AsyncIterator[SearchStreamEvent]:
         engine, children = self._engine_for(call)
         engine_name = type(engine).__name__
@@ -455,6 +510,11 @@ class RaguBackend(EngineAssembly, Ingestion, SearchBackend):
                     )
                 if event.delta:
                     yield SearchStreamEvent("delta", {"text": event.delta})
+        except RaguServiceError as exc:
+            # A refusal that means something — a budget, a busy graph — keeps its
+            # code: inside an open stream this event is all the client gets.
+            yield SearchStreamEvent("error", exc.to_envelope()["error"])
+            return
         except Exception:
             logger.opt(exception=True).error("RAGU {} stream failed", call.mode)
             yield SearchStreamEvent(
@@ -474,6 +534,7 @@ class RaguBackend(EngineAssembly, Ingestion, SearchBackend):
 
     async def search(self, call: SearchCall) -> list[SearchOutcome]:
         engine, children = self._engine_for(call)
+        await self.require_budget(call)
         engine_name = type(engine).__name__
         params = self.bound_params(call.params) if call.params is not None else None
 
@@ -509,6 +570,7 @@ class RaguBackend(EngineAssembly, Ingestion, SearchBackend):
 
     async def retrieve(self, call: SearchCall) -> list[RetrieveOutcome]:
         engine, children = self._engine_for(call)
+        await self.require_budget(call, generate=False)
         params = self.bound_params(call.params) if call.params is not None else None
 
         try:

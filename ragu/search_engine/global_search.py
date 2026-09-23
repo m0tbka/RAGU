@@ -131,12 +131,42 @@ class GlobalSearchEngine(BaseEngine[GlobalSearchParams, GlobalSearchRetrieve]):
             )
         return retrieves
 
-    async def _get_community_summaries(self, min_cluster_size: int) -> List[str]:
+    async def planned_calls(
+        self,
+        queries: List[str],
+        params: GlobalSearchParams | None = None,
+        *,
+        generate: bool = True,
+    ) -> int:
         """
-        Fetch stored community summaries, skipping communities that are too small.
+        How many LLM calls answering these queries will make, counted before any is.
+
+        Global search rates every community that survives ``min_cluster_size``
+        against every query — one call each — and then writes one answer per
+        query. The stored graph fixes both numbers, so a caller holding a budget
+        can refuse before the rating pass instead of after paying for all of it.
+
+        :param queries: The queries about to be run.
+        :param params: The parameters they will run with.
+        :param generate: ``True`` for :meth:`batch_query`, which also writes the
+            answers; ``False`` for :meth:`batch_search`, which only rates.
+        :return: The number of LLM calls.
+        """
+        if not queries:
+            return 0
+        min_cluster_size = params.min_cluster_size if params else GlobalSearchParams().min_cluster_size
+        communities, _ = await self._surviving_communities(min_cluster_size)
+        return len(queries) * (len(communities) + (1 if generate else 0))
+
+    async def _surviving_communities(self, min_cluster_size: int) -> tuple[List[str], int]:
+        """
+        Summaries of the communities that pass the size filter.
+
+        Shared by the search and by :meth:`planned_calls`, so the number a caller
+        budgets against is the number the search then sends.
 
         :param min_cluster_size: Minimum number of entities a community must contain.
-        :return: Summaries of the communities that passed the size filter.
+        :return: The surviving summaries, and how many summaries were stored.
         """
         summary_storage = self.knowledge_graph.index.community_summary_kv_storage
         community_ids = await summary_storage.all_keys()
@@ -148,32 +178,42 @@ class GlobalSearchEngine(BaseEngine[GlobalSearchParams, GlobalSearchRetrieve]):
             if summary is not None
         ]
         if min_cluster_size <= 1 or not kept:
-            return [summary for _, summary in kept]
+            return [summary for _, summary in kept], len(kept)
 
         rows = await self.knowledge_graph.index.community_kv_storage.get_by_ids(
             [community_id for community_id, _ in kept]
         )
         filtered = [
-            (community_id, summary)
-            for (community_id, summary), row in zip(kept, rows)
+            summary
+            for (_, summary), row in zip(kept, rows)
             if row is None or len(row.get("entity_ids", [])) >= min_cluster_size
         ]
+        return filtered, len(kept)
 
-        if len(filtered) != len(kept):
+    async def _get_community_summaries(self, min_cluster_size: int) -> List[str]:
+        """
+        Fetch stored community summaries, skipping communities that are too small.
+
+        :param min_cluster_size: Minimum number of entities a community must contain.
+        :return: Summaries of the communities that passed the size filter.
+        """
+        filtered, stored = await self._surviving_communities(min_cluster_size)
+
+        if len(filtered) != stored:
             logger.debug(
                 "GlobalSearch: skipped {} of {} communities smaller than {} entities",
-                len(kept) - len(filtered),
-                len(kept),
+                stored - len(filtered),
+                stored,
                 min_cluster_size,
             )
-        if kept and not filtered:
+        if stored and not filtered:
             logger.warning(
                 "GlobalSearch: every stored community is smaller than "
                 "min_cluster_size={}; the answer will be generated without context",
                 min_cluster_size,
             )
 
-        return [summary for _, summary in filtered]
+        return filtered
 
     async def get_meta_responses(
         self,

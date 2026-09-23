@@ -154,3 +154,48 @@ async def test_global_search_min_cluster_size_can_filter_everything(real_kg):
     result = await engine.search("query", GlobalSearchParams(min_cluster_size=100))
 
     assert result.result.insights == []
+
+
+@pytest.mark.asyncio
+async def test_planned_calls_count_one_per_surviving_community_per_query(real_kg):
+    engine = GlobalSearchEngine(llm=SimpleNamespace(chat_completion=AsyncMock()), knowledge_graph=real_kg)
+    _stub_community_storages(
+        engine,
+        {"com-big": ("big", 5), "com-small": ("small", 1), "com-unknown": ("unknown", None)},
+    )
+    params = GlobalSearchParams(min_cluster_size=3)
+
+    # Two communities survive the filter; each is rated against each of three
+    # queries, and then every query gets its answer.
+    assert await engine.planned_calls(["a", "b", "c"], params) == 3 * (2 + 1)
+    assert await engine.planned_calls(["a", "b", "c"], params, generate=False) == 3 * 2
+    assert await engine.planned_calls([], params) == 0
+
+
+@pytest.mark.asyncio
+async def test_planned_calls_are_the_calls_batch_query_sends(real_kg):
+    # A caller budgets against the prediction, so it must be the real count:
+    # an overestimate refuses requests that would fit, an underestimate lets
+    # through the ones the budget exists to stop.
+    sent = []
+
+    class CountingLLM:
+        async def batch_chat_completion(self, conversations, output_schema=None, **kwargs):
+            sent.append(len(conversations))
+            if isinstance(output_schema, type) and issubclass(output_schema, GlobalSearchContextModel):
+                return [
+                    GlobalSearchContextModel(reasoning="", response="r", rating=1)
+                    for _ in conversations
+                ]
+            return ["answer" for _ in conversations]
+
+    engine = GlobalSearchEngine(llm=CountingLLM(), knowledge_graph=real_kg)
+    engine.truncation = lambda text: text
+    _stub_community_storages(engine, {"com-a": ("a", 5), "com-b": ("b", 1), "com-c": ("c", 4)})
+    params = GlobalSearchParams(min_cluster_size=3)
+    queries = ["first", "second"]
+
+    planned = await engine.planned_calls(queries, params)
+    await engine.batch_query(queries, params)
+
+    assert planned == sum(sent) == 2 * (2 + 1)

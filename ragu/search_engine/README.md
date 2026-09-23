@@ -140,6 +140,7 @@ Community-summary RAG.
 - Purpose: evaluate all community summaries for query relevance and synthesize a global answer.
 - Best for: broad questions that require corpus-level themes.
 - Requires: community summaries built by `KnowledgeGraph`.
+- Cost: one LLM call per community that survives `min_cluster_size`, for every query, plus one answer per query. `await engine.planned_calls(queries, params)` returns that number before any call is made (`generate=False` for retrieval alone), so a caller holding a budget can refuse up front instead of after the rating pass.
 
 ```python
 from ragu import GlobalSearchEngine, KnowledgeGraph

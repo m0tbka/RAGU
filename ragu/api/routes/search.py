@@ -78,6 +78,11 @@ SEARCH_RESPONSES = {
         "model": ErrorResponse,
         "description": "Capability unavailable for this graph",
     },
+    429: {
+        "model": ErrorResponse,
+        "description": "BUDGET_EXCEEDED: the request cannot fit its LLM budget. "
+        "TOO_MANY_REQUESTS: every generation slot is taken",
+    },
     503: {
         "model": ErrorResponse,
         "description": "Graph is not loaded / service not ready",
@@ -471,12 +476,16 @@ def _sse(event: SearchStreamEvent) -> str:
 
 async def _stream(mode: SearchMode, payload: Any, backend: SearchBackend) -> Response:
     """
-    Stream one answer, refusing an unservable mode before the response starts.
+    Stream one answer, refusing an unservable mode or an unaffordable one before
+    the response starts.
     """
     call = _call(mode, payload)
     # Inside an open stream a 409 could only be an SSE event, so the capability
     # is checked while a status code can still carry it.
     backend.require_capability(mode, call.mix_engines)
+    # The budget too, for the same reason: refused inside the stream it could only
+    # be an event after a 200, and refused here it costs nothing at all.
+    await backend.require_budget(call)
 
     async def events():
         async for event in backend.stream(call):

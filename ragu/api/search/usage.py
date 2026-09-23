@@ -173,25 +173,69 @@ def current() -> Usage | None:
     return _usage.get()
 
 
-def _charge(stage: str, calls: int, prompt_tokens: int, completion_tokens: int) -> None:
+def remaining_calls() -> int | None:
     """
-    Add to the current request's usage and enforce its budget.
+    LLM calls this request may still make, or ``None`` when nothing caps them.
+    """
+    usage = _usage.get()
+    max_calls, _ = _budget.get()
+    if usage is None or max_calls is None:
+        return None
+    return max(max_calls - usage.calls, 0)
 
-    :raises BudgetExceededError: If the request has spent its allowance.
+
+def _dispatch(stage: str, calls: int, prompt_tokens: int) -> None:
+    """
+    Record calls about to be sent, refusing them first if they break the budget.
+
+    Charged as the calls leave rather than when they return: a batch's size is
+    known before it is sent, so one that would overrun the budget is refused
+    while it is still free. Charging on return let global search send its whole
+    rating pass — one call per community — and only then report the overrun,
+    with every call of it paid for. Nothing awaits between the check and the
+    record, so the children of an ensemble running side by side see each other's
+    calls.
+
+    :raises BudgetExceededError: If these calls, or their prompts alone, would
+        take the request over its allowance.
     """
     usage = _usage.get()
     if usage is None:
         return
-    usage.record(stage, calls, prompt_tokens, completion_tokens)
 
     max_calls, max_tokens = _budget.get()
-    if max_calls is not None and usage.calls > max_calls:
+    if max_calls is not None and usage.calls + calls > max_calls:
         raise BudgetExceededError(
-            f"This request made {usage.calls} LLM calls, over its budget of {max_calls}. "
-            "Global search costs one call per community; raise min_cluster_size or the "
-            "budget."
+            f"'{stage}' would send {calls} LLM call{'' if calls == 1 else 's'}, taking "
+            f"this request to {usage.calls + calls} against its budget of {max_calls}. "
+            "Refused before sending. Global search costs one call per community; raise "
+            "min_cluster_size or the budget."
         )
-    if max_tokens is not None and usage.total_tokens > max_tokens:
+    if max_tokens is not None and usage.total_tokens + prompt_tokens > max_tokens:
+        raise BudgetExceededError(
+            f"'{stage}' would send about {prompt_tokens} prompt tokens, taking this "
+            f"request to about {usage.total_tokens + prompt_tokens} against its budget "
+            f"of {max_tokens}. Refused before sending."
+        )
+    usage.record(stage, calls, prompt_tokens, 0)
+
+
+def _settle(stage: str, completion_tokens: int, *, enforce: bool = True) -> None:
+    """
+    Add what the answers cost, which is known only once they are back.
+
+    :param enforce: Whether an overrun raises. A stream that has already been
+        delivered has nothing left to stop, so it only records.
+    :raises BudgetExceededError: If the answers took the request over its token
+        allowance. The next call is the one this stops.
+    """
+    usage = _usage.get()
+    if usage is None:
+        return
+    usage.record(stage, 0, 0, completion_tokens)
+
+    _, max_tokens = _budget.get()
+    if enforce and max_tokens is not None and usage.total_tokens > max_tokens:
         raise BudgetExceededError(
             f"This request spent about {usage.total_tokens} tokens, over its budget of "
             f"{max_tokens}."
@@ -304,41 +348,41 @@ class CountingLLM(LLM):
     @override
     async def chat_completion(self, conversation: Any, *args: Any, **kwargs: Any) -> Any:
         stage = kwargs.get("desc") or UNKNOWN_STAGE
+        _dispatch(stage, 1, self._conversation_tokens(conversation))
         with _generating(stage):
             answer = await self.llm.chat_completion(conversation, *args, **kwargs)
-        _charge(
-            stage,
-            1,
-            self._conversation_tokens(conversation),
-            self._answer_tokens(answer),
-        )
+        _settle(stage, self._answer_tokens(answer))
         return answer
 
     async def batch_chat_completion(
         self, conversations: list[Any], *args: Any, **kwargs: Any
     ) -> Any:
         stage = kwargs.get("desc") or UNKNOWN_STAGE
-        with _generating(stage):
-            answers = await self.llm.batch_chat_completion(conversations, *args, **kwargs)
         prompt = sum(
             self._conversation_tokens(conversation) for conversation in conversations
         )
-        completion = sum(self._answer_tokens(answer) for answer in answers or [])
-        _charge(stage, len(conversations), prompt, completion)
+        _dispatch(stage, len(conversations), prompt)
+        with _generating(stage):
+            answers = await self.llm.batch_chat_completion(conversations, *args, **kwargs)
+        _settle(stage, sum(self._answer_tokens(answer) for answer in answers or []))
         return answers
 
     async def stream_chat_completion(
         self, conversation: Any, *args: Any, **kwargs: Any
     ) -> Any:
         stage = kwargs.get("desc") or UNKNOWN_STAGE
-        # Counted as one call; the deltas are summed as they pass.
+        # One call, counted before it is sent, so a client that leaves mid-stream
+        # does not make it free; the deltas are summed as they pass.
+        _dispatch(stage, 1, self._conversation_tokens(conversation))
         completion = 0
-        # The clock stops even if the client leaves mid-stream: closing the
-        # generator exits the block.
-        with _generating(stage):
-            async for delta in self.llm.stream_chat_completion(
-                conversation, *args, **kwargs
-            ):
-                completion += self._count(delta if isinstance(delta, str) else "")
-                yield delta
-        _charge(stage, 1, self._conversation_tokens(conversation), completion)
+        try:
+            # The clock stops even if the client leaves mid-stream: closing the
+            # generator exits the block.
+            with _generating(stage):
+                async for delta in self.llm.stream_chat_completion(
+                    conversation, *args, **kwargs
+                ):
+                    completion += self._count(delta if isinstance(delta, str) else "")
+                    yield delta
+        finally:
+            _settle(stage, completion, enforce=False)

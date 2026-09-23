@@ -477,3 +477,177 @@ class TestEngineCacheEviction:
 
         assert backend._leaf_engine("naive", "russian") is first
         assert len(built) == 3
+
+
+class TestBudgetBeforeTheFirstCall:
+    """
+    A global search the budget cannot cover is refused while it is still free.
+
+    Global search rates every surviving community against every query before it
+    writes a word, and the graph fixes how many there are. Asked first, the
+    engine says what the request will cost, and the answer is a free 429 rather
+    than one given after the whole rating pass was paid for.
+    """
+
+    class PlanningEngine(TestEngineInvocation.FakeEngine):
+        """A global engine that can say, before running, what it will cost."""
+
+        def __init__(self, planned):
+            super().__init__()
+            self.planned = planned
+            self.asked = []
+
+        async def planned_calls(self, queries, params=None, *, generate=True):
+            self.asked.append((list(queries), generate))
+            return self.planned
+
+    def build(self, planned):
+        backend, engines = TestEngineInvocation().build_backend()
+        engines["global"] = self.PlanningEngine(planned)
+        backend._engines[("global", backend.language, False)] = engines["global"]
+        return backend, engines
+
+    async def test_an_over_budget_global_search_is_refused_before_it_runs(self):
+        from ragu.api.errors import BudgetExceededError
+        from ragu.api.search import usage
+
+        backend, engines = self.build(planned=475)
+        record = usage.start(max_calls=12)
+
+        with pytest.raises(BudgetExceededError) as failure:
+            await backend.search(SearchCall(mode="global", queries=("тренды",)))
+
+        assert engines["global"].calls == []
+        assert record.calls == 0
+        assert "475" in failure.value.message
+        assert "min_cluster_size" in failure.value.message
+        assert failure.value.mode == "global"
+
+    async def test_without_a_budget_nothing_is_counted(self):
+        # Sizing the request reads the community stores; with no budget to hold
+        # it against, that read would be for nothing.
+        from ragu.api.search import usage
+
+        backend, engines = self.build(planned=475)
+        usage.start()
+
+        await backend.search(SearchCall(mode="global", queries=("q",)))
+
+        assert engines["global"].asked == []
+        assert len(engines["global"].calls) == 1
+
+    async def test_a_search_that_fits_runs(self):
+        from ragu.api.search import usage
+
+        backend, engines = self.build(planned=13)
+        usage.start(max_calls=13)
+
+        await backend.search(SearchCall(mode="global", queries=("q",)))
+
+        assert engines["global"].asked == [(["q"], True)]
+        assert len(engines["global"].calls) == 1
+
+    async def test_retrieval_counts_the_rating_pass_alone(self):
+        from ragu.api.search import usage
+
+        backend, engines = self.build(planned=5)
+        usage.start(max_calls=12)
+
+        await backend.retrieve(SearchCall(mode="global", queries=("q",)))
+
+        assert engines["global"].asked == [(["q"], False)]
+
+    async def test_mix_is_refused_on_its_global_child_alone(self):
+        from ragu.api.errors import BudgetExceededError
+        from ragu.api.search import usage
+
+        backend, engines = self.build(planned=475)
+        usage.start(max_calls=12)
+
+        with pytest.raises(BudgetExceededError) as failure:
+            await backend.search(
+                SearchCall(mode="mix", queries=("q",), mix_engines=("local", "global"))
+            )
+
+        assert engines["local"].calls == engines["local"].retrievals == []
+        assert engines["global"].asked == [(["q"], False)]
+        assert "engines" in failure.value.message
+
+    async def test_mix_without_global_is_not_counted(self):
+        from ragu.api.search import usage
+
+        backend, engines = self.build(planned=475)
+        usage.start(max_calls=12)
+
+        await backend.require_budget(
+            SearchCall(mode="mix", queries=("q",), mix_engines=("local", "naive"))
+        )
+
+        assert engines["global"].asked == []
+
+    async def test_a_refusal_inside_a_stream_keeps_its_code(self):
+        # Past the headers the event is all the client gets, so a budget refusal
+        # must not arrive dressed as an internal error.
+        from ragu.api.errors import BudgetExceededError
+
+        backend, _ = TestEngineInvocation().build_backend()
+
+        class Refusing(TestEngineInvocation.FakeEngine):
+            async def stream_query(self, query, params=None):
+                raise BudgetExceededError("'stage' would send 1 LLM call")
+                yield
+
+        backend._engines[("naive", backend.language, False)] = Refusing()
+
+        events = [
+            event
+            async for event in backend.stream(SearchCall(mode="naive", queries=("q",)))
+        ]
+
+        assert [event.event for event in events] == ["error"]
+        assert events[0].data["code"] == "BUDGET_EXCEEDED"
+
+    @pytest.mark.parametrize("budget", [12, 474])
+    async def test_the_reported_case_sends_nothing(self, budget):
+        # The report: 474 communities against a budget of 12, and every one of
+        # the 474 rating calls paid for before the 429. The engine and the
+        # accounting are real; only the model and the stores are stand-ins. At a
+        # budget of 474 the rating pass fits exactly and only the answer after it
+        # does not — which counting ahead is the one thing to catch.
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock
+
+        from ragu.api.errors import BudgetExceededError
+        from ragu.api.search import usage
+        from ragu.api.search.usage import CountingLLM
+        from ragu.search_engine.global_search import GlobalSearchEngine
+
+        class Model:
+            sent = 0
+
+            async def batch_chat_completion(self, conversations, *args, **kwargs):
+                self.sent += len(conversations)
+                return [None] * len(conversations)
+
+        ids = [f"community-{number}" for number in range(474)]
+        graph = SimpleNamespace(
+            index=SimpleNamespace(
+                community_summary_kv_storage=SimpleNamespace(
+                    all_keys=AsyncMock(return_value=ids),
+                    get_by_ids=AsyncMock(return_value=[f"summary of {i}" for i in ids]),
+                )
+            )
+        )
+        model = Model()
+        backend, _ = TestEngineInvocation().build_backend()
+        backend._engines[("global", backend.language, False)] = GlobalSearchEngine(
+            llm=CountingLLM(model), knowledge_graph=graph
+        )
+        record = usage.start(max_calls=budget)
+
+        with pytest.raises(BudgetExceededError) as failure:
+            await backend.search(SearchCall(mode="global", queries=("тренды",)))
+
+        assert model.sent == 0
+        assert record.calls == 0
+        assert "475" in failure.value.message

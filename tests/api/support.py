@@ -8,6 +8,9 @@ the ``api`` extra they skip before this file is ever loaded.
 
 from __future__ import annotations
 
+import asyncio
+import time
+
 from fastapi.testclient import TestClient
 
 from ragu.api.app import create_app
@@ -109,3 +112,18 @@ class SearchOutcomeStub:
 
     def __init__(self, engines):
         self.engines = engines
+
+
+async def pause(seconds: float) -> None:
+    """
+    ``asyncio.sleep`` that lasts at least ``seconds`` of real time.
+
+    The event loop wakes a timer as soon as it is due within the clock's
+    resolution, and on Windows that resolution is 15.6 ms: a 20 ms sleep can
+    return after five. The timing tests measure with ``perf_counter``, so they
+    sleep until it agrees — still yielding to the loop, so concurrent pauses
+    overlap exactly as the calls they stand for would.
+    """
+    deadline = time.perf_counter() + seconds
+    while (left := deadline - time.perf_counter()) > 0:
+        await asyncio.sleep(left)
