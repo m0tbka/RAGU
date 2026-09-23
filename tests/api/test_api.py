@@ -2979,7 +2979,7 @@ class TestBatchEngineReport:
 
     def test_a_degraded_query_is_not_hidden_by_a_clean_first_one(self):
         from ragu.api.models import ChildEngineReport, EngineReport
-        from ragu.api.routes import _merged_report
+        from ragu.api.routes.search import _merged_report
 
         clean = SearchOutcomeStub(
             EngineReport(
@@ -3018,7 +3018,7 @@ class TestBatchEngineReport:
         ]
 
     def test_an_empty_batch_still_reports_a_mode(self):
-        from ragu.api.routes import _merged_report
+        from ragu.api.routes.search import _merged_report
 
         assert _merged_report("naive", []).requested == "naive"
 
