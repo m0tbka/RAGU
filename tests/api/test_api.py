@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from ragu.api.app import UNHANDLED_ERROR_MESSAGE, create_app
 from ragu.api.backends.base import GraphStats, SearchCall
 from ragu.api.config import ServiceSettings
-from ragu.api.mapping import (
+from ragu.api.search.mapping import (
     extract_sources,
     extract_subqueries,
     split_report_title,
@@ -891,7 +891,7 @@ class TestLogging:
     def test_stdlib_records_are_re_emitted_through_loguru(self):
         import logging
 
-        from ragu.api.logging_setup import InterceptHandler
+        from ragu.api.runtime.logging_setup import InterceptHandler
         from ragu.common.logger import logger
 
         captured = []
@@ -1657,7 +1657,7 @@ class TestSettingsIsolation:
 
     async def test_a_failing_graph_does_not_take_down_the_others(self):
         from ragu.api.backends.stub import StubBackend
-        from ragu.api.registry import GraphRegistry
+        from ragu.api.runtime.registry import GraphRegistry
 
         settings = ServiceSettings(
             backend="stub",
@@ -1740,7 +1740,7 @@ class TestReranking:
 
     async def test_a_failing_reranker_keeps_the_retrieval_order(self):
         from ragu.models.scorer import Scorer
-        from ragu.api.reranking import ForgivingScorer
+        from ragu.api.search.reranking import ForgivingScorer
 
         class BrokenScorer(Scorer):
             async def score(self, text_1, text_2, **kwargs):
@@ -1753,7 +1753,7 @@ class TestReranking:
         import asyncio
 
         from ragu.models.scorer import Scorer
-        from ragu.api.reranking import ForgivingScorer, rerank_failure, reset_rerank_report
+        from ragu.api.search.reranking import ForgivingScorer, rerank_failure, reset_rerank_report
 
         class SlowScorer(Scorer):
             async def score(self, text_1, text_2, **kwargs):
@@ -1946,7 +1946,7 @@ class TestJobManager:
     async def test_a_failing_job_keeps_its_reason(self):
         import asyncio
 
-        from ragu.api.jobs import JobManager
+        from ragu.api.runtime.jobs import JobManager
 
         manager = JobManager()
 
@@ -1965,7 +1965,7 @@ class TestJobManager:
     async def test_a_running_job_can_be_cancelled(self):
         import asyncio
 
-        from ragu.api.jobs import JobManager
+        from ragu.api.runtime.jobs import JobManager
 
         manager = JobManager()
 
@@ -1986,7 +1986,7 @@ class TestJobManager:
     async def test_shutdown_stops_what_is_still_running(self):
         import asyncio
 
-        from ragu.api.jobs import JobManager
+        from ragu.api.runtime.jobs import JobManager
 
         manager = JobManager()
 
@@ -2174,7 +2174,7 @@ class TestMetrics:
             assert client.get("/metrics").status_code == 200
 
     def test_the_histogram_is_cumulative(self):
-        from ragu.api.metrics import DURATION, Metrics
+        from ragu.api.runtime.metrics import DURATION, Metrics
 
         registry = Metrics()
         registry.observe(DURATION, 0.3)
@@ -2194,7 +2194,7 @@ class TestMetrics:
 
     def test_observations_are_not_accumulated_one_by_one(self):
         # A long-running service must not keep a float per request.
-        from ragu.api.metrics import DURATION, Metrics
+        from ragu.api.runtime.metrics import DURATION, Metrics
 
         registry = Metrics()
         for _ in range(10_000):
@@ -2202,7 +2202,7 @@ class TestMetrics:
         series = registry._histograms[DURATION][()]
         assert series.count == 10_000
         assert len(series.buckets) == len(
-            __import__("ragu.api.metrics", fromlist=["DURATION_BUCKETS"]).DURATION_BUCKETS
+            __import__("ragu.api.runtime.metrics", fromlist=["DURATION_BUCKETS"]).DURATION_BUCKETS
         )
 
 
@@ -2228,8 +2228,8 @@ class TestUsageAccounting:
         assert batch["usage"] is not None
 
     async def test_calls_are_attributed_to_the_stage_that_made_them(self):
-        from ragu.api import usage
-        from ragu.api.usage import CountingLLM
+        from ragu.api.search import usage
+        from ragu.api.search.usage import CountingLLM
 
         class Encoder:
             def encode(self, text):
@@ -2261,9 +2261,9 @@ class TestUsageAccounting:
         assert record.total_tokens == record.prompt_tokens + record.completion_tokens
 
     async def test_a_call_budget_stops_a_runaway_request(self):
-        from ragu.api import usage
+        from ragu.api.search import usage
         from ragu.api.errors import BudgetExceededError
-        from ragu.api.usage import CountingLLM
+        from ragu.api.search.usage import CountingLLM
 
         class FakeLLM:
             async def batch_chat_completion(self, conversations, *args, **kwargs):
@@ -2282,9 +2282,9 @@ class TestUsageAccounting:
         assert "min_cluster_size" in failure.value.message
 
     async def test_a_token_budget_stops_one_too(self):
-        from ragu.api import usage
+        from ragu.api.search import usage
         from ragu.api.errors import BudgetExceededError
-        from ragu.api.usage import CountingLLM
+        from ragu.api.search.usage import CountingLLM
 
         class Encoder:
             def encode(self, text):
@@ -2326,7 +2326,7 @@ class TestAdmissionControl:
         import asyncio
 
         from ragu.api.errors import TooManyRequestsError
-        from ragu.api.middleware import Admission
+        from ragu.api.runtime.middleware import Admission
 
         admission = Admission(1)
         held = asyncio.Event()
@@ -2350,7 +2350,7 @@ class TestAdmissionControl:
         await task
 
     async def test_the_slot_is_released_afterwards(self):
-        from ragu.api.middleware import Admission
+        from ragu.api.runtime.middleware import Admission
 
         admission = Admission(1)
         async with admission.slot():
@@ -2359,7 +2359,7 @@ class TestAdmissionControl:
             pass
 
     async def test_no_limit_configured_admits_everything(self):
-        from ragu.api.middleware import Admission
+        from ragu.api.runtime.middleware import Admission
 
         admission = Admission(None)
         async with admission.slot():
@@ -2791,7 +2791,7 @@ class TestConcurrencyHazards:
         # that was completely down still reported rerank_error: null.
         import asyncio
 
-        from ragu.api.reranking import (
+        from ragu.api.search.reranking import (
             ForgivingScorer,
             rerank_failure,
             reset_rerank_report,
@@ -2813,7 +2813,7 @@ class TestConcurrencyHazards:
         assert rerank_failure() == "RuntimeError: reranker is down"
 
     async def test_the_degraded_order_is_the_retrieval_order(self):
-        from ragu.api.reranking import ForgivingScorer
+        from ragu.api.search.reranking import ForgivingScorer
         from ragu.models.scorer import Scorer
 
         class Broken(Scorer):
@@ -2862,7 +2862,7 @@ class TestConcurrencyHazards:
         # carrying anything above ASCII, which turned a junk key into a 500.
         from starlette.requests import Request
 
-        from ragu.api.auth import authorize
+        from ragu.api.runtime.auth import authorize
         from ragu.api.errors import UnauthorizedError
 
         settings = ServiceSettings(backend="stub", api_keys="secret-key")
@@ -2901,7 +2901,7 @@ class TestConcurrencyHazards:
         # its own id in the label, one time series per graph.
         from starlette.requests import Request
 
-        from ragu.api.middleware import _route_template
+        from ragu.api.runtime.middleware import _route_template
 
         def template(path, params):
             return _route_template(
@@ -2936,7 +2936,7 @@ class TestConcurrencyHazards:
         # retry racing its own first attempt built the same corpus twice.
         import asyncio
 
-        from ragu.api.jobs import JobManager
+        from ragu.api.runtime.jobs import JobManager
 
         manager = JobManager()
 
@@ -2957,7 +2957,7 @@ class TestConcurrencyHazards:
     async def test_evicting_a_job_forgets_its_idempotency_key(self):
         # _evict trimmed the job map and left the key map growing forever, one
         # dead entry per submission for the life of the process.
-        from ragu.api.jobs import InMemoryJobStore, Job
+        from ragu.api.runtime.jobs import InMemoryJobStore, Job
 
         store = InMemoryJobStore(limit=1)
         for index in range(4):
@@ -3379,7 +3379,7 @@ class TestStageTimings:
     async def test_generation_is_timed_where_it_happens(self):
         import asyncio
 
-        from ragu.api import usage as usage_module
+        from ragu.api.search import usage as usage_module
 
         class SlowLLM:
             async def chat_completion(self, conversation, *args, **kwargs):
@@ -3397,7 +3397,7 @@ class TestStageTimings:
     async def test_retrieval_is_what_the_llm_did_not_take(self):
         import asyncio
 
-        from ragu.api import usage as usage_module
+        from ragu.api.search import usage as usage_module
 
         class SlowLLM:
             async def chat_completion(self, conversation, *args, **kwargs):
@@ -3974,7 +3974,7 @@ class TestRerankerFromTheCommandLine:
                 monkeypatch.delenv(key, raising=False)
 
     def test_none_when_the_environment_names_none(self, monkeypatch):
-        from ragu.api.reranking import reranker_from_env
+        from ragu.api.search.reranking import reranker_from_env
 
         self._clear(monkeypatch)
         monkeypatch.setenv("LLM_BASE_URL", "http://llm")
@@ -3985,13 +3985,13 @@ class TestRerankerFromTheCommandLine:
     def test_missing_llm_credentials_do_not_crash_startup(self, monkeypatch):
         # The backend reports missing credentials through /health; raising here
         # would turn that into a container that restarts without saying why.
-        from ragu.api.reranking import reranker_from_env
+        from ragu.api.search.reranking import reranker_from_env
 
         self._clear(monkeypatch)
         assert reranker_from_env() is None
 
     def test_a_named_reranker_is_built(self, monkeypatch):
-        from ragu.api.reranking import reranker_from_env
+        from ragu.api.search.reranking import reranker_from_env
         from ragu.models.scorer import ScorerOpenAI
 
         self._clear(monkeypatch)
@@ -4006,7 +4006,7 @@ class TestRerankerFromTheCommandLine:
         assert reranker.model_name == "bge-reranker"
 
     def test_a_reranker_without_a_model_is_left_out(self, monkeypatch):
-        from ragu.api.reranking import reranker_from_env
+        from ragu.api.search.reranking import reranker_from_env
 
         self._clear(monkeypatch)
         monkeypatch.setenv("LLM_BASE_URL", "http://llm")
@@ -4132,8 +4132,8 @@ class TestRerankStage:
     async def test_reranking_is_recorded_on_its_own_stage(self):
         import asyncio
 
-        from ragu.api import usage as usage_module
-        from ragu.api.reranking import ForgivingScorer
+        from ragu.api.search import usage as usage_module
+        from ragu.api.search.reranking import ForgivingScorer
         from ragu.models.scorer import Scorer
 
         class Slow(Scorer):
@@ -4150,8 +4150,8 @@ class TestRerankStage:
 
     async def test_rerank_calls_are_not_llm_calls(self):
         # The call total is what the LLM budget counts.
-        from ragu.api import usage as usage_module
-        from ragu.api.reranking import ForgivingScorer
+        from ragu.api.search import usage as usage_module
+        from ragu.api.search.reranking import ForgivingScorer
         from ragu.models.scorer import Scorer
 
         class Fast(Scorer):
@@ -4170,8 +4170,8 @@ class TestRerankStage:
         # took about 30 ms of the request, not 120.
         import asyncio
 
-        from ragu.api import usage as usage_module
-        from ragu.api.reranking import ForgivingScorer
+        from ragu.api.search import usage as usage_module
+        from ragu.api.search.reranking import ForgivingScorer
         from ragu.models.scorer import Scorer
 
         class Slow(Scorer):
@@ -4189,8 +4189,8 @@ class TestRerankStage:
     async def test_a_timed_out_reranker_still_counts_its_time(self):
         import asyncio
 
-        from ragu.api import usage as usage_module
-        from ragu.api.reranking import ForgivingScorer
+        from ragu.api.search import usage as usage_module
+        from ragu.api.search.reranking import ForgivingScorer
         from ragu.models.scorer import Scorer
 
         class Hanging(Scorer):
@@ -4204,8 +4204,8 @@ class TestRerankStage:
     async def test_retrieval_excludes_the_rerankers_time(self):
         import asyncio
 
-        from ragu.api import usage as usage_module
-        from ragu.api.reranking import ForgivingScorer
+        from ragu.api.search import usage as usage_module
+        from ragu.api.search.reranking import ForgivingScorer
         from ragu.models.scorer import Scorer
 
         class Slow(Scorer):
@@ -4225,7 +4225,7 @@ class TestRerankStage:
     async def test_parallel_generation_is_not_double_counted_either(self):
         import asyncio
 
-        from ragu.api import usage as usage_module
+        from ragu.api.search import usage as usage_module
 
         class SlowLLM:
             async def chat_completion(self, conversation, *args, **kwargs):

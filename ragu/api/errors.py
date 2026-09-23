@@ -7,7 +7,7 @@ here are authored for clients; details that come from an exception stay in
 ``detail`` and are logged, never returned.
 """
 
-from ragu.api.request_context import current_request_id
+from ragu.api.runtime.request_context import current_request_id
 from ragu.api.models import Capability, ErrorBody, ErrorResponse
 
 # How long a client should wait before retrying a service that is not ready.

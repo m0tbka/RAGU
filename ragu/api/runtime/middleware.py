@@ -17,15 +17,15 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from ragu.api.auth import authorize
+from ragu.api.runtime.auth import authorize
 from ragu.api.config import ServiceSettings
 from ragu.api.errors import (
     PayloadTooLargeError,
     RaguServiceError,
     TooManyRequestsError,
 )
-from ragu.api.metrics import DURATION, REQUESTS, metrics
-from ragu.api.request_context import (
+from ragu.api.runtime.metrics import DURATION, REQUESTS, metrics
+from ragu.api.runtime.request_context import (
     REQUEST_ID_HEADER,
     reset_request_id,
     set_request_id,

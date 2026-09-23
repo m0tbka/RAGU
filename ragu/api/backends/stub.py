@@ -29,7 +29,7 @@ from ragu.api.models import (
     SourceItem,
     SubqueryItem,
 )
-from ragu.api.mapping import _deduplicated
+from ragu.api.search.mapping import _deduplicated
 from ragu.common.logger import logger
 from ragu.search_engine.global_search import GlobalSearchParams
 from ragu.search_engine.local_search import LocalParams

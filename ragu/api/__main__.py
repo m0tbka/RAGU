@@ -7,8 +7,8 @@ import uvicorn
 
 from ragu.api.app import create_app, openapi_document
 from ragu.api.config import ServiceSettings
-from ragu.api.logging_setup import configure_logging
-from ragu.api.reranking import reranker_from_env
+from ragu.api.runtime.logging_setup import configure_logging
+from ragu.api.search.reranking import reranker_from_env
 
 
 def main() -> None:

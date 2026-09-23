@@ -15,7 +15,7 @@ from typing import Any
 
 from typing_extensions import override
 
-from ragu.api.usage import measure_rerank
+from ragu.api.search.usage import measure_rerank
 from ragu.common.logger import logger
 from ragu.models.scorer import Scorer
 

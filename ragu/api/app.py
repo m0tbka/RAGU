@@ -14,16 +14,16 @@ from fastapi.responses import JSONResponse
 from ragu import __version__
 from ragu.api.backends.base import SearchBackend
 from ragu.api.errors import RequestTimeoutError
-from ragu.api.jobs import JobManager
-from ragu.api.middleware import (
+from ragu.api.runtime.jobs import JobManager
+from ragu.api.runtime.middleware import (
     Admission,
     AuthMiddleware,
     BodyLimitMiddleware,
     MetricsMiddleware,
     RequestContextMiddleware,
 )
-from ragu.api.registry import GraphRegistry
-from ragu.api.request_context import REQUEST_ID_HEADER
+from ragu.api.runtime.registry import GraphRegistry
+from ragu.api.runtime.request_context import REQUEST_ID_HEADER
 from ragu.api.config import ServiceSettings
 from ragu.api.errors import InvalidRequestError, RaguServiceError
 from ragu.api.routes import router

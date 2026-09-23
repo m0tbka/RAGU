@@ -41,9 +41,9 @@ from ragu.api.errors import (
     RaguServiceError,
     ServiceNotReadyError,
 )
-from ragu.api.mapping import extract_sources, to_outcome
-from ragu.api.reranking import ForgivingScorer, rerank_failure, reset_rerank_report
-from ragu.api.usage import CountingLLM, measure_retrieval
+from ragu.api.search.mapping import extract_sources, to_outcome
+from ragu.api.search.reranking import ForgivingScorer, rerank_failure, reset_rerank_report
+from ragu.api.search.usage import CountingLLM, measure_retrieval
 from ragu.api.models import ChildEngineReport, EngineReport, SearchMode
 from ragu.common.logger import logger
 from ragu.models.embedder import Embedder

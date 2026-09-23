@@ -27,11 +27,11 @@ from ragu.api.errors import (
     JobNotFoundError,
     ServiceNotReadyError,
 )
-from ragu.api.jobs import Job, JobManager
-from ragu.api.mapping import split_report_title
-from ragu.api.metrics import GRAPHS, JOBS, SEARCHES, metrics
-from ragu.api.middleware import Admission
-from ragu.api import usage
+from ragu.api.runtime.jobs import Job, JobManager
+from ragu.api.search.mapping import split_report_title
+from ragu.api.runtime.metrics import GRAPHS, JOBS, SEARCHES, metrics
+from ragu.api.runtime.middleware import Admission
+from ragu.api.search import usage
 from ragu.api.models import (
     BatchSearchItem,
     BatchSearchResponse,
