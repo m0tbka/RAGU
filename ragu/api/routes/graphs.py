@@ -5,7 +5,8 @@ and how it is doing.
 
 from fastapi import APIRouter, Depends, Request
 
-from ragu.api.backends.base import MODE_REQUIREMENTS, SearchBackend
+from ragu.api.backends.base import SearchBackend
+from ragu.api.backends.capabilities import MODE_REQUIREMENTS
 from ragu.api.models import (
     ConsistencyIssueItem,
     ConsistencyReportModel,

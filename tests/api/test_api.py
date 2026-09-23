@@ -13,7 +13,8 @@ pytest.importorskip(
 from fastapi.testclient import TestClient  # noqa: E402
 
 from ragu.api.app import UNHANDLED_ERROR_MESSAGE, create_app
-from ragu.api.backends.base import GraphStats, SearchCall
+from ragu.api.backends.base import SearchCall
+from ragu.api.backends.capabilities import GraphStats
 from ragu.api.config import ServiceSettings
 from ragu.api.search.mapping import (
     extract_sources,
@@ -688,7 +689,7 @@ class TestEngineInvocation:
                 raise AssertionError("retrieval must not be wrapped in a query plan")
 
         monkeypatch.setattr(
-            "ragu.api.backends.ragu_backend.QueryPlanEngine", ForbiddenPlanEngine
+            "ragu.api.backends.ragu_backend.backend.QueryPlanEngine", ForbiddenPlanEngine
         )
         backend, _ = self.build_backend()
 
@@ -715,7 +716,7 @@ class TestEngineInvocation:
         # The backend imports the symbol into its own namespace, so patching
         # ``ragu.QueryPlanEngine`` would not reach the code under test.
         monkeypatch.setattr(
-            "ragu.api.backends.ragu_backend.QueryPlanEngine", FakePlanEngine
+            "ragu.api.backends.ragu_backend.backend.QueryPlanEngine", FakePlanEngine
         )
         backend, engines = self.build_backend()
 
@@ -742,7 +743,7 @@ class TestEngineInvocation:
                 raise TypeError("unexpected keyword argument")
 
         monkeypatch.setattr(
-            "ragu.api.backends.ragu_backend.QueryPlanEngine", ExplodingPlanEngine
+            "ragu.api.backends.ragu_backend.backend.QueryPlanEngine", ExplodingPlanEngine
         )
         backend, _ = self.build_backend()
 
@@ -797,7 +798,7 @@ class TestEngineInvocation:
                 )
 
         monkeypatch.setattr(
-            "ragu.api.backends.ragu_backend.QueryPlanEngine", ForbiddenPlanEngine
+            "ragu.api.backends.ragu_backend.backend.QueryPlanEngine", ForbiddenPlanEngine
         )
         backend, engines = self.build_backend()
 
@@ -960,7 +961,7 @@ class TestServiceConfig:
     def test_capability_names_match_the_mode_requirements(self):
         # config.py validates against models.CAPABILITIES while the backends
         # answer from MODE_REQUIREMENTS; they must not drift apart.
-        from ragu.api.backends.base import MODE_REQUIREMENTS
+        from ragu.api.backends.capabilities import MODE_REQUIREMENTS
         from ragu.api.models import CAPABILITIES
 
         declared = {
@@ -1050,7 +1051,7 @@ class TestRecordingEngine:
     """The proxy that makes MixSearchEngine's swallowed failures visible."""
 
     def make_child(self, fail: bool = False):
-        from ragu.api.backends.ragu_backend import RecordingEngine
+        from ragu.api.backends.ragu_backend.engines import RecordingEngine
 
         class Child:
             llm = object()
@@ -2498,20 +2499,19 @@ class TestGraphCacheInvalidation:
 
         backend = make_backend()
         backend.graph = object()
-        backend._node_cache = ["stale"]
-        backend._edge_cache = ["stale"]
+        backend._llm = object()
+        backend._embedder = object()
+        view = backend.view
+        view._node_cache = ["stale"]
+        view._edge_cache = ["stale"]
 
         backend._drop_graph_cache()
 
-        assert backend._node_cache is None
-        assert backend._edge_cache is None
+        assert view._node_cache is None
+        assert view._edge_cache is None
 
     async def test_entities_are_materialized_once(self):
         calls = []
-
-        class Backend:
-            _node_cache = None
-
         backend = make_backend()
 
         class FakeGraphBackend:
@@ -2529,8 +2529,8 @@ class TestGraphCacheInvalidation:
         backend._llm = object()
         backend._embedder = object()
 
-        await backend._nodes()
-        await backend._nodes()
+        await backend.view.nodes()
+        await backend.view.nodes()
 
         assert calls == [1]
 
@@ -3069,11 +3069,11 @@ class TestGraphCacheCeiling:
         backend._llm = object()
         backend._embedder = object()
 
-        await backend._nodes()
-        await backend._nodes()
+        await backend.view.nodes()
+        await backend.view.nodes()
 
         assert calls == [1, 1]
-        assert backend._node_cache is None
+        assert backend.view._node_cache is None
 
     async def test_a_graph_within_the_ceiling_is_kept(self):
         backend = make_backend(graph_cache_max_items=10)
@@ -3094,8 +3094,8 @@ class TestGraphCacheCeiling:
         backend._llm = object()
         backend._embedder = object()
 
-        await backend._nodes()
-        await backend._nodes()
+        await backend.view.nodes()
+        await backend.view.nodes()
 
         assert calls == [1]
 
@@ -3466,8 +3466,8 @@ class TestEventLoopIsNotBlocked:
         backend.graph = object()
         backend._llm = object()
         backend._embedder = object()
-        backend._node_cache = nodes
-        backend._edge_cache = edges
+        backend.view._node_cache = nodes
+        backend.view._edge_cache = edges
         return backend, nodes, edges
 
     async def test_filtering_and_sorting_leave_the_loop(self, monkeypatch):
@@ -3477,7 +3477,7 @@ class TestEventLoopIsNotBlocked:
         loop_thread = threading.get_ident()
         ran_on = []
 
-        import ragu.api.backends.ragu_backend as module
+        import ragu.api.backends.ragu_backend.graph_view as module
 
         original = module._select_entities
 
@@ -3498,7 +3498,7 @@ class TestEventLoopIsNotBlocked:
         loop_thread = threading.get_ident()
         ran_on = []
 
-        import ragu.api.backends.ragu_backend as module
+        import ragu.api.backends.ragu_backend.graph_view as module
 
         original = module._count_degrees
 
@@ -3507,7 +3507,7 @@ class TestEventLoopIsNotBlocked:
             return original(edges)
 
         monkeypatch.setattr(module, "_count_degrees", spy)
-        await backend._degrees()
+        await backend.view.degrees()
 
         assert ran_on and loop_thread not in ran_on
 
@@ -3517,7 +3517,7 @@ class TestEventLoopIsNotBlocked:
         backend, nodes, _ = self._graph_backend()
         called = []
 
-        import ragu.api.backends.ragu_backend as module
+        import ragu.api.backends.ragu_backend.graph_view as module
 
         monkeypatch.setattr(
             module, "_select_entities", lambda *a, **k: called.append(1) or []
@@ -3530,12 +3530,12 @@ class TestEventLoopIsNotBlocked:
 
     async def test_the_degree_map_is_built_once(self):
         backend, _, edges = self._graph_backend()
-        first = await backend._degrees()
-        second = await backend._degrees()
+        first = await backend.view.degrees()
+        second = await backend.view.degrees()
         assert first is second
 
         backend._drop_graph_cache()
-        assert backend._degree_cache is None
+        assert backend.view._degree_cache is None
 
 
 class TestEntitySelection:
@@ -3555,7 +3555,7 @@ class TestEntitySelection:
         ]
 
     def test_filters_compose(self):
-        from ragu.api.backends.ragu_backend import _select_entities
+        from ragu.api.backends.ragu_backend.graph_view import _select_entities
 
         nodes = self._nodes()
         assert [n.entity_name for n in _select_entities(
@@ -3566,14 +3566,14 @@ class TestEntitySelection:
             nodes, None, None, "1", None, "asc", None)] == ["Борис"]
 
     def test_sorting_by_name_is_case_folded(self):
-        from ragu.api.backends.ragu_backend import _select_entities
+        from ragu.api.backends.ragu_backend.graph_view import _select_entities
 
         names = [n.entity_name for n in _select_entities(
             self._nodes(), None, None, None, "name", "asc", None)]
         assert names == ["Анна", "Борис", "Ватикан"]
 
     def test_sorting_by_degree_puts_the_busiest_first(self):
-        from ragu.api.backends.ragu_backend import _select_entities
+        from ragu.api.backends.ragu_backend.graph_view import _select_entities
 
         nodes = self._nodes()
         degrees = {nodes[0].id: 1, nodes[1].id: 9, nodes[2].id: 4}
@@ -3581,7 +3581,7 @@ class TestEntitySelection:
         assert [n.entity_name for n in ordered] == ["Анна", "Ватикан", "Борис"]
 
     def test_counting_degrees_counts_both_ends(self):
-        from ragu.api.backends.ragu_backend import _count_degrees
+        from ragu.api.backends.ragu_backend.graph_view import _count_degrees
         from ragu.graph.types import Relation
 
         edge = Relation(subject_id="a", object_id="b", subject_name="a",
@@ -3625,8 +3625,8 @@ class TestRelationSelection:
         backend.graph = object()
         backend._llm = object()
         backend._embedder = object()
-        backend._node_cache = nodes
-        backend._edge_cache = edges
+        backend.view._node_cache = nodes
+        backend.view._edge_cache = edges
         return backend, nodes, edges
 
     async def test_induced_keeps_only_relations_with_both_ends_inside(self):
@@ -3710,7 +3710,7 @@ class TestRelationSelection:
     async def test_the_membership_pass_leaves_the_event_loop(self, monkeypatch):
         import threading
 
-        import ragu.api.backends.ragu_backend as module
+        import ragu.api.backends.ragu_backend.graph_view as module
 
         backend, nodes, _ = self._backend()
         loop_thread = threading.get_ident()
@@ -4256,7 +4256,7 @@ class TestGraphTimestamps:
         import os
         import time
 
-        from ragu.api.backends.ragu_backend import _folder_timestamps
+        from ragu.api.backends.ragu_backend.backend import _folder_timestamps
 
         older = tmp_path / "a.json"
         newer = tmp_path / "b.json"
@@ -4269,7 +4269,7 @@ class TestGraphTimestamps:
         assert abs(updated.timestamp() - newer.stat().st_mtime) < 1
 
     def test_a_missing_folder_yields_nothing_rather_than_a_date(self, tmp_path):
-        from ragu.api.backends.ragu_backend import _folder_timestamps
+        from ragu.api.backends.ragu_backend.backend import _folder_timestamps
 
         assert _folder_timestamps(str(tmp_path / "nope")) == (None, None)
 
@@ -4279,7 +4279,7 @@ class TestGraphTimestamps:
         # field stays null rather than carrying a plausible wrong date.
         import os
 
-        from ragu.api.backends import ragu_backend
+        from ragu.api.backends.ragu_backend import backend as backend_module
 
         (tmp_path / "a.json").write_text("{}")
         real_stat = os.stat
@@ -4294,9 +4294,9 @@ class TestGraphTimestamps:
                 return getattr(self._result, name)
 
         monkeypatch.setattr(
-            ragu_backend.os, "stat", lambda path, *a, **k: NoBirth(real_stat(path, *a, **k))
+            backend_module.os, "stat", lambda path, *a, **k: NoBirth(real_stat(path, *a, **k))
         )
-        created, updated = ragu_backend._folder_timestamps(str(tmp_path))
+        created, updated = backend_module._folder_timestamps(str(tmp_path))
         assert created is None
         assert updated is not None
 

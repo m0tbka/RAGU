@@ -11,13 +11,13 @@ from datetime import datetime, timezone
 from typing import Any
 
 from ragu.api.backends.base import (
-    GraphStats,
-    SearchStreamEvent,
     RetrieveOutcome,
     SearchBackend,
     SearchCall,
     SearchOutcome,
+    SearchStreamEvent,
 )
+from ragu.api.backends.capabilities import GraphStats
 from ragu.api.config import DEFAULT_GRAPH_ID, GraphSpec, ServiceSettings
 from ragu.api.errors import InvalidRequestError, NotFoundError
 from ragu.api.models import (
@@ -31,9 +31,7 @@ from ragu.api.models import (
 )
 from ragu.api.search.mapping import _deduplicated
 from ragu.common.logger import logger
-from ragu.search_engine.global_search import GlobalSearchParams
-from ragu.search_engine.local_search import LocalParams
-from ragu.search_engine.naive_search import NaiveSearchParams
+from ragu.search_engine.params import GlobalSearchParams, LocalParams, NaiveSearchParams
 
 # How a simulated missing capability shows up in the graph sizes the base class
 # reads. Driving the stub through the same GraphStats the real backend measures
