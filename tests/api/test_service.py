@@ -241,6 +241,42 @@ class TestLogging:
         finally:
             set_level(DEFAULT_LEVEL)
 
+    def test_the_service_log_carries_the_request_id(self):
+        # The id a client gets back is only useful if a grep of this log finds
+        # it. Run in a fresh process: configure_logging takes over the stdlib
+        # root handlers, which would break log capture for every later test.
+        import re
+        import subprocess
+        import sys
+
+        probe = """
+import logging
+from ragu.api.runtime.logging_setup import configure_logging
+from ragu.common.logger import logger
+
+configure_logging("info")
+logger.info("startup")
+with logger.contextualize(request_id="trace-42"):
+    logger.info("inside the request")
+    logging.getLogger("uvicorn.access").info('"POST /v1/search/naive HTTP/1.1" 200')
+logger.complete()
+"""
+        result = subprocess.run(
+            [sys.executable, "-c", probe], capture_output=True, text=True, timeout=120
+        )
+        assert result.returncode == 0, result.stderr
+        lines = [
+            re.sub(r"\x1b\[[0-9;]*m", "", line) for line in result.stdout.splitlines()
+        ]
+        by_message = {line.rsplit(" | ", 1)[-1]: line for line in lines}
+
+        assert " | trace-42 | " in by_message["inside the request"]
+        # uvicorn's access line, through the stdlib intercept: the line an
+        # operator greps first.
+        assert " | trace-42 | " in by_message['"POST /v1/search/naive HTTP/1.1" 200']
+        # Outside a request the column is still there, rather than the line lost.
+        assert " | - | " in by_message["startup"]
+
 
 class TestMetrics:
     """Every request costs money; the operator needs to see the shape of it."""

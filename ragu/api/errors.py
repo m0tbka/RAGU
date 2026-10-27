@@ -10,6 +10,13 @@ here are authored for clients; details that come from an exception stay in
 from ragu.api.runtime.request_context import current_request_id
 from ragu.api.models import Capability, ErrorBody, ErrorResponse
 
+# What a client is told when nothing more specific caught the error. The detail
+# goes to the log under the request's id; it often quotes an endpoint URL or
+# part of the request, so it never goes in the response.
+UNHANDLED_ERROR_MESSAGE = (
+    "The service failed to handle this request. See the service log for details."
+)
+
 # How long a client should wait before retrying a service that is not ready.
 # Loading a graph takes minutes, so this is a hint to back off, not to spin.
 RETRY_AFTER_SECONDS = 30

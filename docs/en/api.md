@@ -515,6 +515,20 @@ Every response carries `X-Request-ID`, echoing the client's if it sent one, and
 the error envelope repeats it in `request_id`. A `500` says only "see the
 service log"; without a shared id there is no way to find the line it refers to.
 
+So the id is in the service log too, on every line logged while the request is
+handled — the server's access line included:
+
+```
+05:07:58 | INFO     | trace-abc | 127.0.0.1:52039 - "POST /v1/search/naive HTTP/1.1" 200
+```
+
+A line logged outside any request carries `-`. A client's id is kept only if it
+looks like one — up to 128 letters, digits and `._:/+=-`; anything else could
+pass for log text, so it is replaced by a generated id, and the response header
+says which. This is the format `python -m ragu.api` installs. A server that
+embeds `create_app` keeps its own, and finds the id in each record's
+`extra["request_id"]`.
+
 ### Metrics
 
 `GET /metrics` renders Prometheus text: `ragu_api_requests_total`,

@@ -25,7 +25,11 @@ from ragu.api.runtime.middleware import (
 from ragu.api.runtime.registry import GraphRegistry
 from ragu.api.runtime.request_context import REQUEST_ID_HEADER
 from ragu.api.config import ServiceSettings
-from ragu.api.errors import InvalidRequestError, RaguServiceError
+from ragu.api.errors import (
+    UNHANDLED_ERROR_MESSAGE,
+    InvalidRequestError,
+    RaguServiceError,
+)
 from ragu.api.routes import router
 from ragu.models.scorer import Scorer
 from ragu.common.logger import logger
@@ -38,11 +42,6 @@ OPENAPI_TAGS = [
     {"name": "jobs", "description": "Ingestion and reindexing, which run too long for a request."},
     {"name": "service", "description": "Probes, metrics and the ontology."},
 ]
-
-UNHANDLED_ERROR_MESSAGE = (
-    "The service failed to handle this request. See the service log for details."
-)
-
 
 def create_app(
     settings: ServiceSettings | None = None,

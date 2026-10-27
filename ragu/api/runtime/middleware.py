@@ -6,13 +6,14 @@ route, including the ones added next.
 """
 
 import asyncio
+import re
 import time
 import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from starlette.datastructures import Headers
+from starlette.datastructures import Headers, MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -20,6 +21,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from ragu.api.runtime.auth import authorize
 from ragu.api.config import ServiceSettings
 from ragu.api.errors import (
+    UNHANDLED_ERROR_MESSAGE,
     PayloadTooLargeError,
     RaguServiceError,
     TooManyRequestsError,
@@ -47,26 +49,66 @@ PUBLIC_PATHS = frozenset(
 )
 
 
-class RequestContextMiddleware(BaseHTTPMiddleware):
+# A client's id is written into every log line of its request, so one that could
+# pass for log text — spaces, separators, control characters — is replaced
+# rather than trusted. UUIDs and the usual trace ids all fit.
+_REQUEST_ID = re.compile(r"[A-Za-z0-9._:/+=-]{1,128}")
+
+
+class RequestContextMiddleware:
     """
     Give every request an id, and carry it into the response and the log.
 
     A 500 says only "see the service log"; without a shared id there is no way
     to find the line it refers to.
+
+    Pure ASGI, because the binding has to span the whole exchange. The server
+    writes its access line as the response starts, and a ``BaseHTTPMiddleware``
+    has returned by then — so the line an operator greps first carried no id.
+    An error nothing else handled is rendered here too, while the id is still
+    bound: Starlette's last-resort handler sits outside every middleware, and
+    the 500 it sent had no id in its body, its header or its log line.
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
-        request_id = request.headers.get(REQUEST_ID_HEADER) or uuid.uuid4().hex
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        supplied = Headers(scope=scope).get(REQUEST_ID_HEADER)
+        request_id = (
+            supplied if supplied and _REQUEST_ID.fullmatch(supplied) else uuid.uuid4().hex
+        )
+        started = False
+
+        async def send_with_id(message: Message) -> None:
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+                message.setdefault("headers", [])
+                MutableHeaders(scope=message)[REQUEST_ID_HEADER] = request_id
+            await send(message)
+
         token = set_request_id(request_id)
         try:
             with logger.contextualize(request_id=request_id):
-                response = await call_next(request)
+                try:
+                    await self.app(scope, receive, send_with_id)
+                except Exception:
+                    logger.opt(exception=True).error("Unhandled service error")
+                    if started:
+                        # The status is already sent; the log line is what is left.
+                        raise
+                    error = RaguServiceError(UNHANDLED_ERROR_MESSAGE)
+                    response = JSONResponse(
+                        status_code=error.status_code, content=error.to_envelope()
+                    )
+                    await response(scope, receive, send_with_id)
         finally:
             reset_request_id(token)
-        response.headers[REQUEST_ID_HEADER] = request_id
-        return response
 
 
 class AuthMiddleware(BaseHTTPMiddleware):

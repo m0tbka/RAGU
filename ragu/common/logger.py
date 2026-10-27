@@ -31,7 +31,9 @@ _handler_id = logger.add(
 )
 
 
-def set_level(level: str, diagnose: bool = DEFAULT_DIAGNOSE) -> None:
+def set_level(
+    level: str, diagnose: bool = DEFAULT_DIAGNOSE, log_format: str = LOG_FORMAT
+) -> None:
     """
     Replace the default stdout sink with one at a different level.
 
@@ -40,6 +42,8 @@ def set_level(level: str, diagnose: bool = DEFAULT_DIAGNOSE) -> None:
 
     :param level: Level name, e.g. ``"DEBUG"`` or ``"warning"`` (case-insensitive).
     :param diagnose: Whether tracebacks carry the value of every local variable.
+    :param log_format: Line format. A service passes its own to add fields, such
+        as the id of the request a line belongs to.
     :raises ValueError: If the level name is not known to loguru.
     """
     global _handler_id
@@ -58,7 +62,7 @@ def set_level(level: str, diagnose: bool = DEFAULT_DIAGNOSE) -> None:
         colorize=True,
         enqueue=True,
         level=level,
-        format=LOG_FORMAT,
+        format=log_format,
         diagnose=diagnose,
     )
 

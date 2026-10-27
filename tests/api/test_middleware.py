@@ -43,6 +43,108 @@ class TestRequestCorrelation:
         assert response.json()["error"]["request_id"] == "trace-99"
         assert response.headers["X-Request-ID"] == "trace-99"
 
+    @staticmethod
+    def capture():
+        """Collect the loguru records emitted while the block runs."""
+        from contextlib import contextmanager
+
+        from ragu.common.logger import logger
+
+        @contextmanager
+        def capturing():
+            records = []
+            sink = logger.add(lambda message: records.append(message.record), level="DEBUG")
+            try:
+                yield records
+            finally:
+                logger.remove(sink)
+
+        return capturing()
+
+    def test_a_500_carries_the_id_in_its_body_header_and_log_line(self):
+        # The one case the id exists for: a 500 says only "see the log". It used
+        # to be rendered outside every middleware, with no id anywhere.
+        app = create_app(ServiceSettings(backend="stub"))
+
+        @app.get("/boom")
+        async def boom():
+            raise RuntimeError("https://llm.internal/v1 rejected the request")
+
+        with self.capture() as records:
+            with TestClient(app, raise_server_exceptions=False) as client:
+                response = client.get("/boom", headers={"X-Request-ID": "trace-500"})
+
+        assert response.status_code == 500
+        assert response.json()["error"]["request_id"] == "trace-500"
+        assert response.headers["X-Request-ID"] == "trace-500"
+        logged = [r for r in records if r["message"] == "Unhandled service error"]
+        assert [r["extra"].get("request_id") for r in logged] == ["trace-500"]
+        assert "llm.internal" not in response.text
+
+    def test_every_line_a_request_logs_carries_its_id(self):
+        from ragu.common.logger import logger
+
+        app = create_app(ServiceSettings(backend="stub"))
+
+        @app.get("/noisy")
+        async def noisy():
+            logger.info("inside the handler")
+            return {}
+
+        with self.capture() as records:
+            with TestClient(app) as client:
+                client.get("/noisy", headers={"X-Request-ID": "trace-7"})
+
+        inside = [r for r in records if r["message"] == "inside the handler"]
+        assert [r["extra"].get("request_id") for r in inside] == ["trace-7"]
+
+    async def test_the_servers_access_line_is_inside_the_binding(self):
+        # uvicorn writes its access line from inside send(), as the response
+        # starts. That is past the point where a BaseHTTPMiddleware has returned,
+        # so the line an operator greps first used to carry no id.
+        from ragu.common.logger import logger
+
+        app = create_app(ServiceSettings(backend="stub"))
+        scope = {
+            "type": "http",
+            "asgi": {"version": "3.0"},
+            "http_version": "1.1",
+            "method": "GET",
+            "scheme": "http",
+            "path": "/health/live",
+            "raw_path": b"/health/live",
+            "query_string": b"",
+            "root_path": "",
+            "headers": [(b"x-request-id", b"trace-access")],
+            "client": ("127.0.0.1", 50000),
+            "server": ("127.0.0.1", 8020),
+        }
+
+        async def receive():
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def send(message):
+            if message["type"] == "http.response.start":
+                logger.info("GET /health/live 200")
+
+        with self.capture() as records:
+            await app(scope, receive, send)
+
+        access = [r for r in records if r["message"] == "GET /health/live 200"]
+        assert [r["extra"].get("request_id") for r in access] == ["trace-access"]
+
+    def test_an_id_that_could_forge_a_log_line_is_replaced(self):
+        # The id is written into every log line of its request; one that reads
+        # as log text would let a client write lines of its own.
+        with build_client() as client:
+            response = client.get(
+                "/health", headers={"X-Request-ID": "x | ERROR | disk full"}
+            )
+
+        issued = response.headers["X-Request-ID"]
+        assert issued != "x | ERROR | disk full"
+        assert len(issued) == 32 and issued.isalnum()
+
 
 class TestAuth:
     """Every request costs LLM calls, so an open service is an open budget."""

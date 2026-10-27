@@ -15,6 +15,18 @@ import logging
 
 from ragu.common.logger import logger, set_level
 
+# The library's format plus the id of the request a line belongs to. The id is
+# what a client gets back in X-Request-ID and in every error body, so one grep
+# finds the request in the client's log and in this one.
+SERVICE_LOG_FORMAT = (
+    "<cyan>{time:HH:mm:ss}</cyan> | <level>{level: <8}</level> | "
+    "<magenta>{extra[request_id]}</magenta> | <level>{message}</level>"
+)
+
+# What a line logged outside any request shows in the id column: startup, a
+# background job, the library's own work between requests.
+NO_REQUEST = "-"
+
 # Loggers that install their own handlers; those handlers have to go, or their
 # records are emitted twice — once by uvicorn's formatter, once by loguru.
 _LOGGERS_TO_INTERCEPT = (
@@ -58,10 +70,15 @@ def configure_logging(level: str = "info") -> None:
     prints every local variable, which in this process means API keys and
     request bodies in the log.
 
+    Every line carries the id of the request it belongs to, bound by the
+    request-context middleware, or :data:`NO_REQUEST` outside one — a default
+    the format needs, since loguru cannot render a field a record lacks.
+
     :param level: Level name, e.g. ``"debug"`` (case-insensitive).
     :raises ValueError: If the level name is not known to loguru.
     """
-    set_level(level, diagnose=False)
+    logger.configure(extra={"request_id": NO_REQUEST})
+    set_level(level, diagnose=False, log_format=SERVICE_LOG_FORMAT)
 
     numeric_level = logging.getLevelName(level.upper())
     logging.root.handlers = [InterceptHandler()]
